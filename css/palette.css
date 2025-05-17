@@ -1,0 +1,27 @@
+:root {
+  --transperent: rgba(0, 0, 0, 0);
+  --shadow: #20222bcb;
+  --shadow-lite: #21232c5c;
+  /* --shadow-accent: hsla(229, 14%, 15%, 0.822); */
+
+  --white-normal: #f8fcff;
+  --white-dark: #b9bdc0;
+  --white-accent: #fff;
+
+  /* --gray-light: #50535e;
+  --gray-normal: #33363F; */
+  --gray-accent: #23242a;
+  --gray-dark: #18191d;
+
+  --gray-border: #44454d;
+  --gray-panel: #292a2f;
+  --gray-panel-light: #35363c;
+
+  --error-accent: #fd9e9e;
+  --success-accent: #485049;
+  --warning-accent: #b3a358;
+  --red-accent: #5e3a3a;
+
+  --font-decorative: Cambria, Cochin, Georgia, serif;
+  --font-informative: 'Arial Narrow', Arial, sans-serif;
+}

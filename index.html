@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="wrapper-main">
+
+    <div class="wrapper-canvas" id="wrapper-canvas">
+      <div id="canvas-placeholder" class="canvas-placeholder">
+        <p>Наcтисніть, щоб завантажити файл<br>або перетягніть сюди фото.</p>
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
+      </div>
+      <div class="wrapper-canvas-item" id="wrapper-canvas-item-initial">
+        <canvas class="canvas" id="canvas-initial"></canvas>
+        <canvas class="canvas overlay-canvas" id="canvas-initial-overlay"></canvas>
+    
+        <div id="canvas-magnifier" style="display:none; position:absolute; pointer-events:none;"></div>
+      </div>
+      <div class="wrapper-canvas-item" id="wrapper-canvas-item-final">
+        <canvas class="canvas" id="canvas-final"></canvas>
+        <canvas class="canvas overlay-canvas" id="canvas-final-overlay"></canvas>
+      </div>
+    </div>
+
+    <div class="wrapper-operation-title">
+      <h2 class="title-name" id="title-operation"></h2>
+      <button class="toggle-log"  id="toggle-log-body-up" title="Show log" style="display:none; margin-left:12px;">🡹</button>
+    </div>
+
+    <div id="resize-log-vertical" class="resizer-bar"></div>
+
+    <div class="wrapper-log-body" id="wrapper-log-body">
+      <div class="wrapper-log-item" id="log-item-1">
+        <div class="wrapper-log-item-title" id="wrapper-log-summary-title">
+          <h3 class="title-information" id="title-log-summary">Conclusive influence</h3>
+        </div>
+        <div class="wrapper-log-item-body" id="wrapper-log-summary-body"></div>
+      </div>
+      <div id="resize-log-bar" class="resizer-bar"></div>
+  
+      <div class="wrapper-log-item" id="log-item-2">
+        <div class="wrapper-log-item-title" id="wrapper-log-influence-title">
+          <h3 class="title-information" id="title-log-influence">Influence log</h3>
+        </div>
+        <div class="wrapper-log-item-body" id="wrapper-log-influence-body"></div>
+      </div>
+      <button class="toggle-log" id="toggle-log-body-down" title="Hide log">🡻</button>
+
+    </div>
+
+
+  </div>
+  
+  <div class="wrapper-control" id="wrapper-control">
+    <div class="wrapper-control-pixel-color" id="wrapper-control-pixel-color">
+      <div class="wrapper-control-pixel-color-item">
+        <p class="title-name" id="title-pixel-color-RGB"><span class="pixel-color-label">RGB:</span> <span class="pixel-color-value" id="pixel-color-value-RGB"></span></p>
+      </div>
+      <div class="wrapper-control-pixel-color-item">
+        <p class="title-name" id="title-pixel-color-CMYK"><span class="pixel-color-label">CMYK:</span> <span class="pixel-color-value" id="pixel-color-value-CMYK"></span></p>
+      </div>
+      <div class="wrapper-control-pixel-color-item">
+        <p class="title-name" id="title-pixel-color-HSB"><span class="pixel-color-label">HSB:</span> <span class="pixel-color-value" id="pixel-color-value-HSB"></span></p>
+      </div>
+      <div class="wrapper-control-pixel-color-item">
+        <p class="title-name" id="title-pixel-color-XYZ"><span class="pixel-color-label">XYZ:</span> <span class="pixel-color-value" id="pixel-color-value-XYZ"></span></p>
+      </div>
+      <div class="wrapper-control-pixel-color-item">
+        <p class="title-name" id="title-pixel-color-Lab"><span class="pixel-color-label">Lab:</span> <span class="pixel-color-value" id="pixel-color-value-Lab"></span></p>
+      </div>
+    </div>
+
+    <div class="wrapper-convert" id="wrapper-convert-options">
+      <div class="wrapper-control-item-header">
+        <button class="color-space-btn" data-space="RGB"><p>RGB</p></button>
+        <button class="color-space-btn" data-space="CMYK"><p>CMYK</p></button>
+        <button class="color-space-btn" data-space="HSB"><p>HSB</p></button>
+        <button class="color-space-btn" data-space="XYZ"><p>XYZ</p></button>
+        <button class="color-space-btn" data-space="Lab"><p>Lab</p></button>
+      </div>
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-info">
+        <p class="title-information" id="text-convert-item-body-info">Open file to convert</p>
+      </div>
+      <!-- Додаємо форми для кожної системи -->
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-RGB" style="display:none">
+        <form id="form-convert-RGB">
+          <label><span class="text-range">R*:</span> <input type="range" name="r_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="r_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">G*:</span> <input type="range" name="g_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="g_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">B*:</span> <input type="range" name="b_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="b_mul_num" min="0" max="2" step="0.01" value="1"></label>
+          <button type="reset">Reset</button>
+        </form>
+      </div>
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-CMYK" style="display:none">
+        <form id="form-convert-CMYK">
+          <label><span class="text-range">C*:</span> <input type="range" name="c_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="c_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">M*:</span> <input type="range" name="m_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="m_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">Y*:</span> <input type="range" name="y_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="y_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">K*:</span> <input type="range" name="k_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="k_mul_num" min="0" max="2" step="0.01" value="1"></label>
+          <button type="reset">Reset</button>
+        </form>
+      </div>
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-HSB" style="display:none">
+        <form id="form-convert-HSB">
+          <div class="hue-range-selector">
+            <canvas id="hueCanvas" width="220" height="220"></canvas>
+            <div class="hue-inputs">
+              <label>Use H <input type="checkbox" id="ignoreHue" checked></label>
+
+              <label>Start:
+                <input type="number" id="hueStart" min="0" max="359" value="30">
+              </label>
+              <label>End:
+                <input type="number" id="hueEnd" min="0" max="359" value="120">
+              </label>
+            </div>
+          </div>
+          <!-- <label><span class="text-range">H*:</span> <input type="range" name="h_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="h_mul_num" min="0" max="2" step="0.01" value="1"></label><br> -->
+          <label><span class="text-range">S*:</span> <input type="range" name="s_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="s_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">B*:</span> <input type="range" name="b_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="b_mul_num" min="0" max="2" step="0.01" value="1"></label>
+          <button type="reset">Reset</button>
+        </form>
+      </div>
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-XYZ" style="display:none">
+        <form id="form-convert-XYZ">
+          <label><span class="text-range">X*:</span> <input type="range" name="x_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="x_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">Y*:</span> <input type="range" name="y_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="y_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">Z*:</span> <input type="range" name="z_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="z_mul_num" min="0" max="2" step="0.01" value="1"></label>
+          <button type="reset">Reset</button>
+        </form>
+      </div>
+      <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-Lab" style="display:none">
+        <form id="form-convert-Lab">
+          <label><span class="text-range">L*:</span> <input type="range" name="l_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="l_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">A*:</span> <input type="range" name="a_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="a_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
+          <label><span class="text-range">B*:</span> <input type="range" name="b_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="b_mul_num" min="0" max="2" step="0.01" value="1"></label>
+          <button type="reset">Reset</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="wrapper-convert-control">
+      <button class="button-convert" id="button-convert-undo">Undo</button>
+      <button class="button-convert" id="button-convert-save">Save</button>
+    </div>
+  </div>
+  <div id="resize-control-bar" class="resizer-bar"></div>
+
+  <script src="js/color_range.js"></script>
+  <script src="js/color_convert.js"></script>
+  <script src="js/interface_control.js"></script>
+  <script src="js/canvas_control.js"></script>
+  <script src="js/script.js"></script>
+
+</body>
+</html>
