@@ -233,7 +233,9 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mouseup', () => {
+  if (!dragging) return;
   dragging = null;
+  window.submitActiveConvertForm && window.submitActiveConvertForm();
   draw();
 });
 
@@ -245,3 +247,43 @@ inputEnd.addEventListener('input', (e) => {
   hueEnd = Math.max(0, Math.min(359, parseInt(e.target.value, 10) || 0));
   draw();
 });
+
+// --- Автоматичне переведення при зміні hue-range-selector ---
+['hueStart', 'hueEnd'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    // При знятті фокусу
+    el.addEventListener('blur', () => {
+      window.submitActiveConvertForm && window.submitActiveConvertForm();
+    });
+    // При натисканні Enter
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        window.submitActiveConvertForm && window.submitActiveConvertForm();
+      }
+    });
+  }
+});
+const ignoreHueEl = document.getElementById('ignoreHue');
+if (ignoreHueEl) {
+  ignoreHueEl.addEventListener('input', () => {
+    window.submitActiveConvertForm && window.submitActiveConvertForm();
+  });
+  ignoreHueEl.addEventListener('change', () => {
+    window.submitActiveConvertForm && window.submitActiveConvertForm();
+  });
+}
+
+const formHSB = document.getElementById('form-convert-HSB');
+if (formHSB) {
+  formHSB.addEventListener('reset', () => {
+
+    inputStart.value = 30;
+    inputEnd.value = 120;
+    hueStart = 30;
+    hueEnd = 120;
+    draw();
+
+    window.submitActiveConvertForm && window.submitActiveConvertForm();
+  });
+}

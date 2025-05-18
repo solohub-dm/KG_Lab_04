@@ -20,6 +20,11 @@
         <canvas class="canvas overlay-canvas" id="canvas-initial-overlay"></canvas>
     
         <div id="canvas-magnifier" style="display:none; position:absolute; pointer-events:none;"></div>
+
+        <div id="canvas-context-menu" class="canvas-context-menu" style="display:none;">
+          <button id="context-save-png" type="button">Save as PNG</button>
+          <button id="context-delete-img" type="button" class="danger">Видалити зображення</button>
+        </div>
       </div>
       <div class="wrapper-canvas-item" id="wrapper-canvas-item-final">
         <canvas class="canvas" id="canvas-final"></canvas>
@@ -86,7 +91,7 @@
       <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-info">
         <p class="title-information" id="text-convert-item-body-info">Open file to convert</p>
       </div>
-      <!-- Додаємо форми для кожної системи -->
+      
       <div class="wrapper-convert-item-body" id="wrapper-convert-item-body-RGB" style="display:none">
         <form id="form-convert-RGB">
           <label><span class="text-range">R*:</span> <input type="range" name="r_mul" min="0" max="2" step="0.01" value="1"> <input type="number" name="r_mul_num" min="0" max="2" step="0.01" value="1"></label><br>
@@ -147,6 +152,18 @@
       <button class="button-convert" id="button-convert-undo">Undo</button>
       <button class="button-convert" id="button-convert-save">Save</button>
     </div>
+
+    <!-- <div class="wrapper-convert" id="wrapper-convert-influence" style="margin-top: 24px;">
+      <div class="wrapper-control-item-header">
+        <p class="title-name">Influence</p>
+      </div>
+      <div class="wrapper-convert-item-bodym" id="wrapper-convert-item-body-calc">
+        <p class="title-information" id="text-influence-calc">Click to calculate</p>
+      </div>
+      <div class="wrapper-convert-item-bodym" id="wrapper-convert-item-body-infleunce" style="display:none;">
+
+      </div>
+    </div> -->
   </div>
   <div id="resize-control-bar" class="resizer-bar"></div>
 

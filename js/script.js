@@ -218,6 +218,15 @@ colorSpaces.forEach(space => {
     else if (space === 'XYZ') mulKeys = ['x_mul','y_mul','z_mul'];
     else if (space === 'Lab') mulKeys = ['l_mul','a_mul','b_mul'];
     let muls = mulKeys.map(k => parseFloat(new FormData(form).get(k)) || 1);
+
+    let opts = {};
+    if (space === 'HSB') {
+      const useH = document.getElementById('ignoreHue')?.checked;
+      const hueStart = Number(document.getElementById('hueStart')?.value) || 0;
+      const hueEnd = Number(document.getElementById('hueEnd')?.value) || 0;
+      opts = { useH, hueStart, hueEnd };
+    }
+
     let w = previewMatrix[0].length, h = previewMatrix.length;
     // --- Визначаємо координати selection у матриці ---
     let selCoords = selection ? getMatrixSelectionCoords(selection, canvasInitial, w, h) : null;
@@ -236,7 +245,11 @@ colorSpaces.forEach(space => {
         }
         let result;
         if (!selCoords || (x >= x0 && x < x1 && y >= y0 && y < y1)) {
-          result = colorRouterMul(currentColorSpace, space, px, muls);
+          if (space === 'HSB') {
+            result = colorRouterMul(currentColorSpace, space, px, muls, opts);
+          } else {
+            result = colorRouterMul(currentColorSpace, space, px, muls);
+          }
         } else {
           result = colorRouterMul(currentColorSpace, space, px, [1,1,1,1]);
         }
@@ -292,6 +305,8 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   ctxI.drawImage(tmpCanvas, 0, 0, canvasInitial.width, canvasInitial.height);
   // Приховуємо canvasFinal
   canvasFinal.style.display = 'none';
+    // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
   // Приховуємо wrapper-canvas-item (другий)
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
@@ -384,6 +399,8 @@ if (btns[1]) btns[1].addEventListener('click', function() { // Save
   setSaveUndoEnabled(false);
   // Приховати canvas-final
   canvasFinal.style.display = 'none';
+    // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
   // Приховати wrapper-canvas-item (другий)
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
@@ -422,12 +439,16 @@ document.addEventListener('keydown', function(e) {
       }
     }
     if (wrapperFinal) wrapperFinal.style.display = 'none';
+      // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
     
     setSelectionEnabled(false);
     window.clearSelection();
     setSaveUndoEnabled(false);
     // --- Приховати другий canvas ---
     if (typeof canvasFinal !== 'undefined') canvasFinal.style.display = 'none';
+      // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
     // --- Приховати меню опцій для обраної системи ---
     document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
       if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
@@ -474,6 +495,8 @@ document.addEventListener('keydown', function(e) {
       const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
       if (wrapperFinal && wrapperFinal.style.display === 'flex') {
         wrapperFinal.style.display = 'none';
+          // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
         window.previewMatrix = null;
         if (canvasFinal) {
           const ctxF = canvasFinal.getContext('2d');
@@ -542,6 +565,8 @@ document.getElementById('button-convert-undo').addEventListener('click', functio
     // Приховати wrapper-canvas-item-final
     const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
     if (wrapperFinal) wrapperFinal.style.display = 'none';
+      // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
   }
   setSelectionEnabled(false);
   window.clearSelection();
@@ -703,3 +728,66 @@ function getMatrixSelectionCoords(selection, canvas, matrixWidth, matrixHeight) 
 //   }
 // }
 
+
+function analyzeColorMatrices(matrixA, matrixB, threshold = 0) {
+  const h = matrixA.length;
+  const w = h > 0 ? matrixA[0].length : 0;
+  const channels = w > 0 ? matrixA[0][0].length : 0;
+
+  let totalDiff = 0;
+  let minDiff = null;
+  let maxDiff = 0;
+  let maxDiffCoord = null;
+  let maxDiffColor = null;
+  let changedPixels = 0;
+  let unchangedPixels = 0;
+  let channelDiffSum = Array(channels).fill(0);
+  let channelDiffMax = Array(channels).fill(0);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const pxA = matrixA[y][x];
+      const pxB = matrixB[y][x];
+      let pxDiff = 0;
+      let pxChannelDiffs = [];
+      for (let c = 0; c < channels; c++) {
+        const diff = Math.abs(pxA[c] - pxB[c]);
+        pxChannelDiffs.push(diff);
+        channelDiffSum[c] += diff;
+        if (diff > channelDiffMax[c]) channelDiffMax[c] = diff;
+        pxDiff += diff;
+      }
+      if (pxDiff > maxDiff) {
+        maxDiff = pxDiff;
+        maxDiffCoord = {x, y};
+        maxDiffColor = pxB.slice();
+      }
+      if (pxDiff > threshold) changedPixels++;
+      else unchangedPixels++;
+      if (pxDiff > 0 && (minDiff === null || pxDiff < minDiff)) minDiff = pxDiff;
+      totalDiff += pxDiff;
+    }
+  }
+
+  const totalPixels = h * w;
+  const avgDiff = totalPixels > 0 ? totalDiff / totalPixels : 0;
+  const accuracy = totalPixels > 0 ? (unchangedPixels / totalPixels) * 100 : 0;
+  const percentChanged = totalPixels > 0 ? (changedPixels / totalPixels) * 100 : 0;
+  const channelAvgDiff = channelDiffSum.map(sum => totalPixels > 0 ? sum / totalPixels : 0);
+
+  return {
+    accuracy: accuracy, 
+    avgColorError: avgDiff,
+    maxColorError: maxDiff,
+    minColorError: minDiff === null ? 0 : minDiff,
+    colorThatChangedTheMost: {
+      coord: maxDiffCoord,
+      color: maxDiffColor
+    },
+    percentChanged: percentChanged,
+    channelStats: {
+      avg: channelAvgDiff,
+      max: channelDiffMax
+    }
+  };
+}

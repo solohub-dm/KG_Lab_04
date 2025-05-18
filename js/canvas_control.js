@@ -11,6 +11,10 @@ const canvasFinal = document.getElementById('canvas-final');
 const canvasFinalOverlay = document.getElementById('canvas-final-overlay');
 const wrapperFinal = canvasFinal.parentElement;
 
+
+  // const wrapperInfluence = document.getElementById('wrapper-convert-influence');
+  // const wrapperInfluenceInfo = document.getElementById('wrapper-convert-item-body-calc');
+
 const convertButtons = document.querySelectorAll('.color-space-btn');
 window.convertButtons = convertButtons;
 const infoText = document.getElementById('text-convert-item-body-info');
@@ -18,6 +22,9 @@ const infoText = document.getElementById('text-convert-item-body-info');
 function setInitialState() {
   wrapperInitial.style.display = 'none';
   wrapperFinal.style.display = 'none';
+
+  // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
 
   placeholder.style.display = 'flex';
   convertButtons.forEach(btn => btn.disabled = true);
@@ -53,6 +60,10 @@ fileInput.addEventListener('change', e => {
   }
 });
 
+// Додайте глобальну змінну для оригінальної матриці RGB
+let originalRgbMatrix = null;
+
+// ...далі у функції handleFile(file):
 function handleFile(file) {
   const reader = new FileReader();
   reader.onload = function(ev) {
@@ -64,10 +75,30 @@ function handleFile(file) {
       showInitialCanvas();
       infoText.textContent = 'Choose system to convert';
       convertButtons.forEach(btn => btn.disabled = false);
+      // --- Створюємо currentColorMatrix з оригінального зображення ---
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = img.width;
+      tmpCanvas.height = img.height;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.drawImage(img, 0, 0, img.width, img.height);
+      const imgData = tmpCtx.getImageData(0, 0, img.width, img.height);
+      currentColorMatrix = imageDataToMatrix(imgData);
+      // --- Зберігаємо оригінальну матрицю у RGB ---
+      originalRgbMatrix = imageDataToMatrix(imgData);
+      currentColorSpace = 'RGB';
+      window.currentColorMatrix = currentColorMatrix;
+      window.matrixToImageData = matrixToImageData;
+      undoStack = [cloneMatrix(currentColorMatrix)];
+      redoStack = [];
+      // --- ОНОВЛЕНО: оновити заголовок ---
+      const titleOp = document.getElementById('title-operation');
+      titleOp.textContent = currentColorSpace;
+      updateTitleOperation('loaded', currentColorSpace);
     };
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
+  panelColor.style.display = '';
 }
 
 function syncOverlayVisibility() {
@@ -173,19 +204,19 @@ function clearSelection() {
 window.clearSelection = clearSelection;
 
 
-
 function showInitialCanvas() {
   placeholder.style.display = 'none';
   wrapperInitial.style.display = 'flex';
   wrapperFinal.style.display = 'none';
   
-  // Налаштовуємо стилі для центрування в режимі одного канвасу
+  // wrapperInfluence.style.display = 'none';
+  // wrapperInfluenceInfo.style.display = 'none';
+
   const initialContainer = canvasInitial.parentElement;
-  initialContainer.style.maxWidth = 'none'; // Вимкнути обмеження ширини
-  initialContainer.style.flex = '0 0 auto'; // Не розтягуватись
-  initialContainer.style.margin = '0 auto'; // Центрувати по горизонталі
+  initialContainer.style.maxWidth = 'none';
+  initialContainer.style.flex = '0 0 auto'; 
+  initialContainer.style.margin = '0 auto'; 
   
-  // Синхронізація оверлеїв і оновлення канвасів
   syncOverlayVisibility();
   fitAndDrawCanvases();
   if (loadedImage) syncDrawSelection();
@@ -195,7 +226,7 @@ function showBothCanvases() {
   placeholder.style.display = 'none';
   wrapperInitial.style.display = 'flex';
   wrapperFinal.style.display = 'flex';
-  // Повертаємо обмеження ширини для обох
+  
   wrapperInitial.style.maxWidth = 'calc(50%)';
   wrapperFinal.style.maxWidth = 'calc(50%)';
   wrapperInitial.style.flex = '';
@@ -203,6 +234,9 @@ function showBothCanvases() {
   wrapperInitial.style.margin = '0';
   wrapperFinal.style.margin = '0';
   syncOverlayVisibility();
+
+  // wrapperInfluence.style.display = 'block';
+  // wrapperInfluenceInfo.style.display = 'flex';
 
   const activeFormDiv = Array.from(document.querySelectorAll('.wrapper-convert-item-body'))
     .find(div => getComputedStyle(div).display === 'flex');
@@ -720,9 +754,8 @@ window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
   const MAG_SIZE = 80; // px
   const MAG_SRC = 5;    // 5x5 пікселів
   const PIXEL_SIZE = MAG_SIZE / MAG_SRC;
-  const MAG_OFFSET_X = -275;
-  const MAG_OFFSET_Y = -85;
-
+  const MAG_OFFSET_X = -40;
+  const MAG_OFFSET_Y = -130;
   function showMagnifier(x, y) {
     const rect = canvas.getBoundingClientRect();
     const cx = Math.round((x - rect.left) * (canvas.width / rect.width));
@@ -770,11 +803,15 @@ window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
     ctx.restore();
     // Позиціонуємо magnifier зі зміщенням відносно курсора
     magnifier.style.display = 'block';
-    magnifier.style.left = (x + MAG_OFFSET_X) + 'px';
-    magnifier.style.top = (y + MAG_OFFSET_Y) + 'px';
+  const wrapperRect = wrapper.getBoundingClientRect();
+  const magHeight = magnifier.offsetHeight || 60;
+  // left/top відносно wrapper
+  magnifier.style.left = (x - wrapperRect.left) + 'px';
+  magnifier.style.top = (y - wrapperRect.top - magHeight) + 'px';
   }
 
   wrapper.addEventListener('mousemove', function(e) {
+    if (window._canvasContextMenuOpen) return;
     // Показуємо лупу лише якщо відображається тільки initial
     const final = document.getElementById('wrapper-canvas-item-final');
     if (!final || final.style.display === 'flex') {
@@ -856,6 +893,7 @@ function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
 
 // --- Наведення на canvas для визначення кольору пікселя ---
 canvasInitialOverlay.addEventListener('mousemove', function(e) {
+  if (window._canvasContextMenuOpen) return;
   console.log('mousemove');
   updatePixelColorPanelVisibility();
   if (!loadedImage || wrapperFinal.style.display === 'flex') return;
@@ -874,9 +912,7 @@ canvasInitialOverlay.addEventListener('mousemove', function(e) {
   updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab);
 });
 
-canvasInitialOverlay.addEventListener('mouseleave', function() {
-  updatePixelColorPanelVisibility();
-  // Очистити панелі
+function clearPixelColorPanels() {
   ['RGB','CMYK','HSB','XYZ','Lab'].forEach(sys => {
     const el = document.getElementById('pixel-color-value-' + sys);
     const div = document.getElementById('title-pixel-color-' + sys);
@@ -885,8 +921,77 @@ canvasInitialOverlay.addEventListener('mouseleave', function() {
       div.parentElement.style.background = '';
     }
   });
+}
+
+canvasInitialOverlay.addEventListener('mouseleave', function() {
+  
+  updatePixelColorPanelVisibility();
+  // Очистити панелі
+  clearPixelColorPanels();
 });
 
 // --- Оновлювати видимість панелі при завантаженні/зміні режиму ---
 window.addEventListener('DOMContentLoaded', updatePixelColorPanelVisibility);
 window.addEventListener('resize', updatePixelColorPanelVisibility);
+
+
+
+
+
+  const wrapper = document.getElementById('wrapper-canvas-item-initial');
+  const menu = document.getElementById('canvas-context-menu');
+  const saveBtn = document.getElementById('context-save-png');
+  const delBtn = document.getElementById('context-delete-img');
+  const magnifier = document.getElementById('canvas-magnifier');
+
+wrapper.addEventListener('contextmenu', function(e) {
+  if (wrapperFinal && wrapperFinal.style.display === 'flex') return;
+  e.preventDefault();
+  const wrapperRect = wrapper.getBoundingClientRect();
+  menu.style.display = 'block';
+  menu.style.left = (e.clientX - wrapperRect.left) + 'px';
+  menu.style.top = (e.clientY - wrapperRect.top) + 'px';
+  if (magnifier) magnifier.style.display = 'none';
+  window._canvasContextMenuOpen = true;
+  clearPixelColorPanels();
+});
+
+
+  document.addEventListener('mousedown', function(e) {
+    if (!menu.contains(e.target)) {
+      menu.style.display = 'none';
+      window._canvasContextMenuOpen = false;
+    }
+  });
+
+
+  saveBtn.addEventListener('click', function() {
+    menu.style.display = 'none';
+    window._canvasContextMenuOpen = false;
+    if (magnifier) magnifier.style.display = 'none';
+    const link = document.createElement('a');
+    link.download = 'canvas.png';
+    link.href = canvasInitial.toDataURL('image/png');
+    link.click();
+  });
+
+
+  delBtn.addEventListener('click', function() {
+
+  menu.style.display = 'none';
+  window._canvasContextMenuOpen = false;
+  if (magnifier) magnifier.style.display = 'none';
+
+  loadedImage = null;
+  loadedImageNaturalWidth = 0;
+  loadedImageNaturalHeight = 0;
+
+  window.currentColorMatrix = null;
+  window.previewMatrix = null;
+
+  if (typeof undoStack !== 'undefined') undoStack.length = 0;
+  if (typeof redoStack !== 'undefined') redoStack.length = 0;
+
+    if (typeof setInitialState === 'function') setInitialState();
+  });
+

@@ -112,32 +112,32 @@ function RGBtoHSB([r, g, b], muls = [1,1,1], opts = {}) {
     if      (max === R) H = ((G - B) / delta) % 6;
     else if (max === G) H = (B - R) / delta + 2;
     else H = (R - G) / delta + 4;
+    
     H *= 60;
     if (H < 0) H += 360;
   }
+
   S = max === 0 ? 0 : delta / max;
 
-  // --- Custom logic for S/B multipliers based on H and UI controls ---
-  let useH = opts.useH !== undefined ? opts.useH : true;
-  let hueStart = opts.hueStart !== undefined ? opts.hueStart : 0;
-  let hueEnd = opts.hueEnd !== undefined ? opts.hueEnd : 359;
-  let inRange = false;
-  if (hueStart === hueEnd) {
-    inRange = true;
-  } else if (hueStart < hueEnd) {
-    inRange = (H >= hueStart && H <= hueEnd);
-  } else {
-    // wrap around 360
-    inRange = (H >= hueStart || H <= hueEnd);
+  let applyMul = true;
+  if (opts && opts.useH) {
+    let hStart = Number(opts.hueStart) || 0;
+    let hEnd = Number(opts.hueEnd) || 0;
+    if (hStart <= hEnd) {
+      applyMul = (H >= hStart && H <= hEnd);
+    } else {
+      applyMul = (H >= hStart || H <= hEnd);
+    }
   }
-  if (!useH || inRange) {
+  if (!opts || !opts.useH) {
+    applyMul = true;
+  }
+  H = H * (muls[0] ?? 1);
+  if (applyMul) {
     S = S * (muls[1] ?? 1);
     V = V * (muls[2] ?? 1);
   }
-  // H always gets its multiplier
-  H = H * (muls[0] ?? 1);
 
-  // Clamp outputs
   H = Math.max(0, Math.min(360, Math.round(H)));
   S = Math.max(0, Math.min(1, S));
   V = Math.max(0, Math.min(1, V));
@@ -294,7 +294,7 @@ function LabtoXYZ([L, a, b], muls = [1,1,1]) {
 // ---------------------------
 
 // colorRouter з множниками
-function colorRouterMul(from, to, value, muls) {
+function colorRouterMul(from, to, value, muls, opts) {
   if (from === to) {
     if (muls && Array.isArray(muls)) {
       return value.map((v, i) => v * (muls[i] ?? 1));
@@ -308,7 +308,7 @@ function colorRouterMul(from, to, value, muls) {
   const convert = {
     RGB: { 
       CMYK: RGBtoCMYK, 
-      HSB: RGBtoHSB, 
+      HSB: (v, m) => RGBtoHSB(v, m, opts),
       XYZ: RGBtoXYZ
     },
     CMYK: { 
