@@ -1,4 +1,3 @@
-
 const logBody = document.getElementById('wrapper-log-body');
 
 const toggleLogBodyDown = document.getElementById('toggle-log-body-down');
@@ -9,6 +8,7 @@ function hideLogBody() {
   toggleLogBodyDown.style.display = 'none';
   toggleLogBodyUp.style.display = 'inline-block';
 }
+
 function showLogBody() {
   logBody.style.display = 'flex';
   toggleLogBodyDown.style.display = 'inline-block';
@@ -28,6 +28,11 @@ let isResizingControl = false;
 resizeControlBar.addEventListener('mousedown', function(e) {
   isResizingControl = true;
   document.body.style.cursor = 'ew-resize';
+  console.log('no-select');
+  document.body.classList.add('no-select');
+  if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
 });
 let resizeRaf = null;
 function scheduleFitAndDraw() {
@@ -58,6 +63,7 @@ window.addEventListener('mousemove', function(e) {
 window.addEventListener('mouseup', function() {
   isResizingControl = false;
   document.body.style.cursor = '';
+  document.body.classList.remove('no-select');
 });
 
 
@@ -70,6 +76,10 @@ if (resizeLogBar && logBody && logItem1 && logItem2) {
   resizeLogBar.addEventListener('mousedown', function(e) {
     isLogResizing = true;
     document.body.style.cursor = 'ew-resize';
+    document.body.classList.add('no-select');
+    if (window.getSelection) {
+      window.getSelection().removeAllRanges();
+    }
   });
   window.addEventListener('mousemove', function(e) {
     if (!isLogResizing) return;
@@ -82,6 +92,7 @@ if (resizeLogBar && logBody && logItem1 && logItem2) {
   window.addEventListener('mouseup', function() {
     isLogResizing = false;
     document.body.style.cursor = '';
+    document.body.classList.remove('no-select');
   });
 }
 
@@ -96,6 +107,10 @@ resizeLogVertical.addEventListener('mousedown', function(e) {
   document.body.style.cursor = 'ns-resize';
   startY = e.clientY;
   startHeight = logBody.offsetHeight;
+  document.body.classList.add('no-select');
+  if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
 });
 
 window.addEventListener('mousemove', function(e) {
@@ -118,5 +133,6 @@ window.addEventListener('mousemove', function(e) {
 window.addEventListener('mouseup', function() {
   isLogVResizing = false;
   document.body.style.cursor = '';
+  document.body.classList.remove('no-select');
 });
 

@@ -38,7 +38,6 @@ function handleFile(file) {
       loadedImageNaturalWidth = img.width;
       loadedImageNaturalHeight = img.height;
 
-      showInitialCanvas();
       infoText.textContent = 'Choose system to convert';
       convertButtons.forEach(btn => btn.disabled = false);
 
@@ -54,10 +53,10 @@ function handleFile(file) {
 
       setCurrentMatrixObj({ matrix: rgbMatrix, colorSpace: 'RGB' });
       setOriginalMatrixObj({ matrix: rgbMatrix, colorSpace: 'RGB' });
-      undoStack = [{ matrix: cloneMatrix(rgbMatrix), colorSpace: 'RGB' }];
-      redoStack = [];
-
       updateTitleOperation('loaded', getCurrentColorSpace());
+
+      showInitialCanvas();
+
     };
     img.src = ev.target.result;
   };
@@ -268,8 +267,9 @@ function fitAndDrawCanvases() {
   canvasInitial.style.height = size.height + 'px';
   const ctx1 = canvasInitial.getContext('2d');
   ctx1.clearRect(0, 0, size.width, size.height);
-  if (window.currentColorMatrix) {
-    const imgData = window.matrixToImageData(window.currentColorMatrix);
+  if (window.currentColorMatrixObj) {
+    // console.log('currentColorMatrixObj', window.currentColorMatrixObj);
+    const imgData = window.matrixToImageData(window.currentColorMatrixObj.matrix, window.currentColorMatrixObj.colorSpace);
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = imgData.width;
     tmpCanvas.height = imgData.height;
@@ -289,9 +289,9 @@ function fitAndDrawCanvases() {
     canvasFinal.style.height = size.height + 'px';
     const ctx2 = canvasFinal.getContext('2d');
     ctx2.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
-    if (window.previewMatrix && typeof window.matrixToImageData === 'function') {
-      const imgDataF = window.matrixToImageData(window.previewMatrix);
-      const tmpCanvasF = document.createElement('canvas');
+    if (window.previewMatrixObj && typeof window.matrixToImageData === 'function') {
+    const imgDataF = window.matrixToImageData(window.previewMatrixObj.matrix, window.previewMatrixObj.colorSpace);
+    const tmpCanvasF = document.createElement('canvas');
       tmpCanvasF.width = imgDataF.width;
       tmpCanvasF.height = imgDataF.height;
       tmpCanvasF.getContext('2d').putImageData(imgDataF, 0, 0);
@@ -889,6 +889,9 @@ delBtn.addEventListener('click', function() {
   window.currentColorMatrixObj = { matrix: null, colorSpace: 'RGB' };
   window.originalRgbMatrixObj = { matrix: null, colorSpace: 'RGB' };
   window.previewMatrixObj = null;
+
+  if(wrapperInfluenceSum.lastChild) wrapperInfluenceSum.removeChild(wrapperInfluenceSum.lastChild);
+  while (wrapperInfluenceLog.firstChild) wrapperInfluenceLog.removeChild(wrapperInfluenceLog.firstChild);
 
   if (typeof undoStack !== 'undefined') undoStack.length = 0;
   if (typeof redoStack !== 'undefined') redoStack.length = 0;

@@ -47,14 +47,20 @@ function normalizeArr(arr) {
 // ---------------------------
 // RGB <-> CMYK
 // ---------------------------
-
+const mod = document.getElementById('mod');
 // RGB -> CMYK
 function RGBtoCMYK([r, g, b], muls = [1,1,1,1]) {
   let [R, G, B] = normalizeArr([r, g, b]);
-  let K = 1 - Math.max(R, G, B);
+
+  let K = 0;
+  if (!mod.checked)
+    K = 1 - Math.max(R, G, B);
+  else 
+    K = 1 - (0.3 * R + 0.59 * G + 0.11 * B);
+
   let C = 0, M = 0, Y = 0;
 
-  if (K !== 1) {
+  if (K < 1 ) {
     C = (1 - R - K) / (1 - K);
     M = (1 - G - K) / (1 - K);
     Y = (1 - B - K) / (1 - K);
@@ -80,9 +86,9 @@ function CMYKtoRGB([C, M, Y, K], muls = [1,1,1]) {
   let G = 255 * (1 - M) * (1 - K);
   let B = 255 * (1 - Y) * (1 - K);
 
-  R = Math.round(R * (muls[0] ?? 1));
-  G = Math.round(G * (muls[1] ?? 1));
-  B = Math.round(B * (muls[2] ?? 1));
+  R = Math.round(R * (muls[0]));
+  G = Math.round(G * (muls[1]));
+  B = Math.round(B * (muls[2]));
 
   R = Math.max(0, Math.min(255, R));
   G = Math.max(0, Math.min(255, G));
@@ -126,12 +132,12 @@ function RGBtoHSB([r, g, b], muls = [1,1,1], opts = {}) {
   if (!opts || !opts.useH) {
     applyMul = true;
   }
-  H = H * (muls[0] ?? 1);
+  H = H * (muls[0]);
   if (applyMul) {
-    S = S * (muls[1] ?? 1);
-    V = V * (muls[2] ?? 1);
+    S = S * (muls[1]);
+    V = V * (muls[2]);
   }
-
+  
   H = Math.max(0, Math.min(360, Math.round(H)));
   S = Math.max(0, Math.min(1, S));
   V = Math.max(0, Math.min(1, V));
@@ -156,9 +162,9 @@ function HSBtoRGB([H, S, V], muls = [1,1,1]) {
   let G = Math.round((g + m) * 255);
   let B = Math.round((b + m) * 255);
 
-  R = Math.round(R * (muls[0] ?? 1));
-  G = Math.round(G * (muls[1] ?? 1));
-  B = Math.round(B * (muls[2] ?? 1));
+  R = Math.round(R * (muls[0]));
+  G = Math.round(G * (muls[1]));
+  B = Math.round(B * (muls[2]));
 
   R = Math.max(0, Math.min(255, R));
   G = Math.max(0, Math.min(255, G));
@@ -208,9 +214,9 @@ function XYZtoRGB([X, Y, Z], muls = [1,1,1]) {
   G = Math.round(G * 255);
   B = Math.round(B * 255);
   
-  R = Math.round(R * (muls[0] ?? 1));
-  G = Math.round(G * (muls[1] ?? 1));
-  B = Math.round(B * (muls[2] ?? 1));
+  R = Math.round(R * (muls[0]));
+  G = Math.round(G * (muls[1]));
+  B = Math.round(B * (muls[2]));
 
   R = Math.round(Math.max(0, Math.min(255, R)));
   G = Math.round(Math.max(0, Math.min(255, G)));
@@ -237,9 +243,9 @@ function XYZtoLab([X, Y, Z], muls = [1,1,1]) {
   let a = 500 * (fx - fy);
   let b = 200 * (fy - fz);
 
-  L = L * (muls[0] ?? 1);
-  a = a * (muls[1] ?? 1);
-  b = b * (muls[2] ?? 1);
+  L = L * (muls[0]);
+  a = a * (muls[1]);
+  b = b * (muls[2]);
 
   L = Math.max(0, Math.min(100, L));
   a = Math.max(-200, Math.min(200, a));
@@ -261,9 +267,9 @@ function LabtoXYZ([L, a, b], muls = [1,1,1]) {
   let yNorm = Y * 100.0 / 100.0;
   let zNorm = Z * 108.883 / 108.883;
 
-  xNorm = xNorm * (muls[0] ?? 1);
-  yNorm = yNorm * (muls[1] ?? 1);
-  zNorm = zNorm * (muls[2] ?? 1);
+  xNorm = xNorm * (muls[0]);
+  yNorm = yNorm * (muls[1]);
+  zNorm = zNorm * (muls[2]);
 
   xNorm = Math.max(0, Math.min(1, xNorm));
   yNorm = Math.max(0, Math.min(1, yNorm));
@@ -278,11 +284,13 @@ function LabtoXYZ([L, a, b], muls = [1,1,1]) {
 function colorRouterMul(from, to, value, muls, opts) {
   if (from === to) {
     if (muls && Array.isArray(muls)) {
-      return value.map((v, i) => v * (muls[i] ?? 1));
+      return value.map((v, i) => v * (muls[i]));
     }
     return value;
   }
   if (!validateColor(value, from)) {
+    console.error('Invalid input color for space', from, to, value, muls, opts);
+    console.error('Array.isArray(color)', value);
     throw new Error(`Invalid input color for space ${from}`);
   }
 

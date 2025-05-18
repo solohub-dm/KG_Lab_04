@@ -38,7 +38,7 @@ window.convertButtons.forEach(btn => {
       }
     });
 
-    updateTitleOperation('convert', currentColorSpace, space);
+    updateTitleOperation('convert', getCurrentColorSpace(), space);
 
     canvasFinal.style.display = 'block';
     fitAndDrawCanvases();
@@ -55,6 +55,10 @@ let originalRgbMatrixObj = { matrix: null, colorSpace: 'RGB' };
 let currentColorMatrixObj = { matrix: null, colorSpace: 'RGB' };
 let previewMatrixObj = null;
 
+window.originalRgbMatrixObj = originalRgbMatrixObj;
+window.currentColorMatrixObj = currentColorMatrixObj;
+window.previewMatrixObj = previewMatrixObj;
+
 function getCurrentMatrix() {
   return currentColorMatrixObj.matrix;
 }
@@ -63,8 +67,7 @@ function getCurrentColorSpace() {
 }
 function setCurrentMatrixObj(obj) {
   currentColorMatrixObj = { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace };
-  window.currentColorMatrix = currentColorMatrixObj.matrix;
-  window.currentColorSpace = currentColorMatrixObj.colorSpace;
+  window.currentColorMatrixObj = currentColorMatrixObj;
 }
 function getOriginalMatrix() {
   return originalRgbMatrixObj.matrix;
@@ -74,6 +77,7 @@ function getOriginalColorSpace() {
 }
 function setOriginalMatrixObj(obj) {
   originalRgbMatrixObj = { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace };
+  window.originalRgbMatrixObj = originalRgbMatrixObj;
 }
 function getPreviewMatrix() {
   return previewMatrixObj ? previewMatrixObj.matrix : null;
@@ -83,6 +87,7 @@ function getPreviewColorSpace() {
 }
 function setPreviewMatrixObj(obj) {
   previewMatrixObj = obj ? { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace } : null;
+  window.previewMatrixObj = previewMatrixObj;
 }
 
 function imageDataToMatrix(imgData) {
@@ -98,17 +103,18 @@ function imageDataToMatrix(imgData) {
   }
   return matrix;
 }
-function matrixToImageData(matrix) {
+function matrixToImageData(matrix, space) {
+  // console.log('matrixToImageData start');
   const h = matrix.length, w = matrix[0].length;
   const imgData = new ImageData(w, h);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
       let rgb;
-      if (currentColorSpace === 'RGB') {
+      if (space === 'RGB') {
         rgb = matrix[y][x];
       } else {
-        rgb = colorRouterMul(currentColorSpace, 'RGB', matrix[y][x], [1,1,1]);
+        rgb = colorRouterMul(space, 'RGB', matrix[y][x], [1,1,1]);
       }
       imgData.data[i] = rgb[0];
       imgData.data[i+1] = rgb[1];
@@ -116,8 +122,13 @@ function matrixToImageData(matrix) {
       imgData.data[i+3] = 255;
     }
   }
+  // console.log('matrix', matrix[0][0]);
+  // console.log('colorSpace', space);
+  // console.log('matrixToImageData end');
   return imgData;
 }
+window.matrixToImageData = matrixToImageData;
+
 function cloneMatrix(matrix) {
   if (!matrix) return null;
   return matrix.map(row => row.map(px => [...px]));
@@ -154,7 +165,7 @@ colorSpaces.forEach(space => {
       });
 
       num.addEventListener('blur', () => {
-        console.log('blur');
+        // console.log('blur');
         let val = num.value.replace(/,/g, '.');
         val = val.replace(/[^\d.]/g, '');
 
@@ -218,6 +229,7 @@ colorSpaces.forEach(space => {
   });
 
   form.addEventListener('reset', function(e) {
+    mod.checked = false;
     form.querySelectorAll('input[type="range"]').forEach(range => {
       const num = form.querySelector(`input[name="${range.name}_num"]`);
       if (num) num.value = range.value;
@@ -227,15 +239,16 @@ colorSpaces.forEach(space => {
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
-    if (!getCurrentMatrix()) return;
+    // console.log('submit start');
     let previewMatrix = cloneMatrix(getCurrentMatrix());
+
     let mulKeys = [];
     if (space === 'RGB') mulKeys = ['r_mul','g_mul','b_mul'];
     else if (space === 'CMYK') mulKeys = ['c_mul','m_mul','y_mul','k_mul'];
     else if (space === 'HSB') mulKeys = ['h_mul','s_mul','b_mul'];
     else if (space === 'XYZ') mulKeys = ['x_mul','y_mul','z_mul'];
     else if (space === 'Lab') mulKeys = ['l_mul','a_mul','b_mul'];
-    let muls = mulKeys.map(k => parseFloat(new FormData(form).get(k)) || 1);
+    let muls = mulKeys.map(k => parseFloat(new FormData(form).get(k)));
 
     let opts = {};
     if (space === 'HSB') {
@@ -243,6 +256,7 @@ colorSpaces.forEach(space => {
       const hueStart = Number(document.getElementById('hueStart')?.value) || 0;
       const hueEnd = Number(document.getElementById('hueEnd')?.value) || 0;
       opts = { useH, hueStart, hueEnd };
+      muls[0] = 1;
     }
 
     let w = previewMatrix[0].length, h = previewMatrix.length;
@@ -252,31 +266,35 @@ colorSpaces.forEach(space => {
       x0 = selCoords.x0; y0 = selCoords.y0;
       x1 = selCoords.x1; y1 = selCoords.y1;
     }
+
+    let currentMatrix = getCurrentMatrix();
+    let currentColorSpace = getCurrentColorSpace();
+
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        let px = getCurrentMatrix()[y][x];
-        if (!Array.isArray(px) || px.length !== 3 || px.some(v => typeof v !== 'number' || isNaN(v))) {
-          px = [0,0,0];
-        } else {
-          px = px.map(v => Math.max(0, Math.min(255, Math.round(v))));
-        }
+        let px = currentMatrix[y][x];
+        // if (!Array.isArray(px) || px.length !== 3 || px.some(v => typeof v !== 'number' || isNaN(v))) {
+        //   px = [0,0,0];
+        // } else {
+        //   px = px.map(v => Math.max(0, Math.min(255, Math.round(v))));
+        // }
         let result;
         if (!selCoords || (x >= x0 && x < x1 && y >= y0 && y < y1)) {
           if (space === 'HSB') {
-            result = colorRouterMul(getCurrentColorSpace(), space, px, muls, opts);
+            result = colorRouterMul(currentColorSpace, space, px, muls, opts);
           } else {
-            result = colorRouterMul(getCurrentColorSpace(), space, px, muls);
+            result = colorRouterMul(currentColorSpace, space, px, muls);
           }
         } else {
-          result = colorRouterMul(getCurrentColorSpace(), space, px, [1,1,1,1]);
+          result = colorRouterMul(currentColorSpace, space, px, [1,1,1,1]);
         }
-        if (space !== 'RGB') result = colorRouterMul(space, 'RGB', result, [1,1,1]);
+
         previewMatrix[y][x] = result;
       }
     }
 
-    setPreviewMatrixObj({ matrix: previewMatrix, colorSpace: 'RGB' });
-    const imgData = matrixToImageData(getPreviewMatrix());
+    setPreviewMatrixObj({ matrix: previewMatrix, colorSpace: space });
+    const imgData = matrixToImageData(previewMatrix, space);
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = imgData.width;
     tmpCanvas.height = imgData.height;
@@ -286,6 +304,14 @@ colorSpaces.forEach(space => {
     const ctxDst = canvasFinal.getContext('2d');
     ctxDst.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
     ctxDst.drawImage(tmpCanvas, 0, 0, canvasFinal.width, canvasFinal.height);
+
+    // console.log('currentMatrix', getCurrentMatrix()[0][0]);
+    // console.log('currentColorSpace', getCurrentColorSpace());
+
+    // console.log('previewMatrix', getPreviewMatrix()[0][0]);
+    // console.log('previewColorSpace', getPreviewColorSpace());
+
+    // console.log('submit end');
   });
 
   form.querySelectorAll('input[type="range"], input[type="number"]').forEach(input => {
@@ -295,67 +321,99 @@ colorSpaces.forEach(space => {
   });
 });
 
+
+if (mod) {
+  mod.addEventListener('change', function() {
+    const form = document.getElementById('form-convert-CMYK');
+    if (form) form.dispatchEvent(new Event('submit', {cancelable:true}));
+  });
+}
+
+function convertToRgb(matrix, space) {
+  let w = matrix[0].length, h = matrix.length;
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let px = matrix[y][x];
+      let result = colorRouterMul(space, 'RGB', px);
+      matrix[y][x] = result;
+    }
+  }
+}
+
 const panelColor = document.getElementById('wrapper-control-pixel-color');
 
 document.getElementById('button-convert-save').addEventListener('click', function() {
   if (!canvasFinal || canvasFinal.style.display !== 'block') return;
+  // console.log('save start');
+  let oldMatrix = cloneMatrix(getCurrentMatrix());
+  let oldColorSpace = getCurrentColorSpace();
+
+  // console.log('oldMatrix', oldMatrix[0][0]);
+  // console.log('oldColorSpace', oldColorSpace);
+  
+  undoStack.push({ matrix: oldMatrix, colorSpace: oldColorSpace });
+  redoStack = [];
+
   let newMatrix = getPreviewMatrix() ? cloneMatrix(getPreviewMatrix()) : cloneMatrix(getCurrentMatrix());
   let newColorSpace = getPreviewColorSpace() || getCurrentColorSpace();
-  undoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
-  redoStack = [];
   setCurrentMatrixObj({ matrix: newMatrix, colorSpace: newColorSpace });
-  window.matrixToImageData = matrixToImageData;
   setPreviewMatrixObj(null);
-  const imgDataNew = matrixToImageData(getCurrentMatrix());
+
+  // console.log('newMatrix', getCurrentMatrix()[0][0]);
+  // console.log('newColorSpace', getCurrentColorSpace());
+
+  const imgDataNew = matrixToImageData(getCurrentMatrix(), getCurrentColorSpace());
   const tmpCanvas = document.createElement('canvas');
   tmpCanvas.width = imgDataNew.width;
   tmpCanvas.height = imgDataNew.height;
   tmpCanvas.getContext('2d').putImageData(imgDataNew, 0, 0);
+
   canvasInitial.width = canvasInitial.offsetWidth;
   canvasInitial.height = canvasInitial.offsetHeight;
   const ctxI = canvasInitial.getContext('2d');
   ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
   ctxI.drawImage(tmpCanvas, 0, 0, canvasInitial.width, canvasInitial.height);
   canvasFinal.style.display = 'none';
+
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
+  window.clearSelection();
   syncOverlayVisibility();
   document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
     if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
     else div.style.display = 'none';
   });
   setSelectionEnabled(false);
-  window.clearSelection();
-  // setSaveUndoEnabled(false);
-  document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-  setCurrentMatrixObj({ matrix: getCurrentMatrix(), colorSpace: 'RGB' });
-  updateTitleOperation('loaded', getCurrentColorSpace());
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
-  let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
-  renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
-  res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
-  renderColorAnalysis(res, wrapperInfluenceLog, false, getOriginalColorSpace(), getCurrentColorSpace());
+
+  document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
+
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
+
+  updateTitleOperation('loaded', getCurrentColorSpace());
+
+  let res = analyzeColorMatrices(getOriginalMatrix(), getOriginalColorSpace(), newMatrix, newColorSpace)
+  renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), newColorSpace);
+  res = analyzeColorMatrices(oldMatrix, oldColorSpace, newMatrix, newColorSpace)
+  renderColorAnalysis(res, wrapperInfluenceLog, false, oldColorSpace, newColorSpace);
+
+  // console.log('save end');
 });
 
-// function // setSaveUndoEnabled(enabled) {
-//   const btns = document.querySelectorAll('.button-convert');
-//   if (btns[0]) btns[0].disabled = !enabled; 
-//   if (btns[1]) btns[1].disabled = !enabled; 
-// }
 
 const btns = document.querySelectorAll('.button-convert');
 if (btns[1]) btns[1].addEventListener('click', function() {
   setSelectionEnabled(false);
   window.clearSelection();
-  // setSaveUndoEnabled(false);
+
   canvasFinal.style.display = 'none';
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
   syncOverlayVisibility(); 
 
-  updateTitleOperation('loaded', currentColorSpace);
+  updateTitleOperation('loaded', getCurrentColorSpace());
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
   
   canvasInitialOverlay.style.cursor = 'default';
@@ -367,21 +425,32 @@ document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
     const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
     if (wrapperFinal.style.display !== 'flex') {
-      if (undoStack.length > 1) {
+      if (undoStack.length >= 1) {
         redoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
-        undoStack.pop();
         const last = undoStack[undoStack.length - 1];
+        undoStack.pop();
+
         setCurrentMatrixObj(last);
-        const imgDataNew = matrixToImageData(getCurrentMatrix());
+        const imgDataNew = matrixToImageData(getCurrentMatrix(), getCurrentColorSpace());
         canvasInitial.width = imgDataNew.width;
         canvasInitial.height = imgDataNew.height;
         const ctxI = canvasInitial.getContext('2d');
         ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
         ctxI.putImageData(imgDataNew, 0, 0);
+
+        let newMatrix = getCurrentMatrix();
+        let newColorSpace = getCurrentColorSpace();
+
+        let originalMatrix = getOriginalMatrix();
+        let originalColorSpace = getOriginalColorSpace();
+
         if(wrapperInfluenceLog.lastChild) wrapperInfluenceLog.removeChild(wrapperInfluenceLog.lastChild);
-        let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
-        renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
-      }
+        let res = analyzeColorMatrices(originalMatrix, originalColorSpace, newMatrix, newColorSpace)
+        renderColorAnalysis(res, wrapperInfluenceSum, true, originalColorSpace, newColorSpace);
+
+        if (undoStack.length === 0) 
+          if(wrapperInfluenceSum.lastChild) wrapperInfluenceSum.removeChild(wrapperInfluenceSum.lastChild);
+      } 
     }
     if (wrapperFinal) wrapperFinal.style.display = 'none';
     setSelectionEnabled(false);
@@ -393,7 +462,7 @@ document.addEventListener('keydown', function(e) {
       else div.style.display = 'none';
     });
     document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-    updateTitleOperation('loaded', currentColorSpace);
+    updateTitleOperation('loaded', getCurrentColorSpace());
     document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
       form.reset();
       form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -407,12 +476,19 @@ document.addEventListener('keydown', function(e) {
     canvasInitialOverlay.style.cursor = 'default';
     panelColor.style.display = '';
   }
+
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
     if (redoStack.length > 0) {
-      undoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
+      let oldMatrix = cloneMatrix(getCurrentMatrix());
+      let oldColorSpace = getCurrentColorSpace();
+      undoStack.push({ matrix: oldMatrix, colorSpace: oldColorSpace });
+
       const next = redoStack.pop();
       setCurrentMatrixObj(next);
-      const imgDataNew = matrixToImageData(getCurrentMatrix());
+      let newMatrix = cloneMatrix(getPreviewMatrix());
+      let newColorSpace = getPreviewColorSpace();
+
+      const imgDataNew = matrixToImageData(newMatrix, newColorSpace);
       canvasInitial.width = imgDataNew.width;
       canvasInitial.height = imgDataNew.height;
       const ctxI = canvasInitial.getContext('2d');
@@ -421,7 +497,7 @@ document.addEventListener('keydown', function(e) {
       const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
       if (wrapperFinal && wrapperFinal.style.display === 'flex') {
         wrapperFinal.style.display = 'none';
-        window.previewMatrix = null;
+        window.previewMatrixObj = null;
         if (canvasFinal) {
           const ctxF = canvasFinal.getContext('2d');
           ctxF && ctxF.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
@@ -435,7 +511,7 @@ document.addEventListener('keydown', function(e) {
         else div.style.display = 'none';
       });
       document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-      updateTitleOperation('loaded', currentColorSpace);
+      updateTitleOperation('loaded', getCurrentColorSpace());
       document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
         form.reset();
         form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -449,16 +525,20 @@ document.addEventListener('keydown', function(e) {
       if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
       canvasInitialOverlay.style.cursor = 'default';
       panelColor.style.display = '';
-      let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
-      renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
-      res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
-      renderColorAnalysis(res, wrapperInfluenceLog, false, getOriginalColorSpace(), getCurrentColorSpace());
+
+      let originalMatrix = getOriginalMatrix();
+      let originalColorSpace = getOriginalColorSpace();
+
+      let res = analyzeColorMatrices(originalMatrix, originalColorSpace, newMatrix, newColorSpace)
+      renderColorAnalysis(res, wrapperInfluenceSum, true, originalColorSpace, newColorSpace);
+      res = analyzeColorMatrices(oldMatrix, oldColorSpace, newMatrix, newColorSpace)
+      renderColorAnalysis(res, wrapperInfluenceLog, false, oldColorSpace, newColorSpace);
     }
   }
 });
 
 document.getElementById('button-convert-undo').addEventListener('click', function() {
-  window.previewMatrix = null;
+  window.previewMatrixObj = null;
   if (canvasFinal) {
     const ctxF = canvasFinal.getContext('2d');
     ctxF && ctxF.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
@@ -580,7 +660,15 @@ function getMatrixSelectionCoords(selection, canvas, matrixWidth, matrixHeight) 
   return {x0, y0, x1, y1};
 }
 
-function analyzeColorMatrices(matrixA, matrixB, threshold = 1) {
+function analyzeColorMatrices(matrixAS, colorSpaceA, matrixBS, colorSpaceB, threshold = 0) {
+  const matrixA = cloneMatrix(matrixAS);
+  const matrixB = cloneMatrix(matrixBS);
+
+  if (colorSpaceA !== 'RGB') 
+    convertToRgb(matrixA, colorSpaceA);
+  if (colorSpaceB !== 'RGB')
+    convertToRgb(matrixB, colorSpaceB);
+
   const h = matrixA.length;
   const w = h > 0 ? matrixA[0].length : 0;
   const channels = w > 0 ? matrixA[0][0].length : 0;
@@ -650,9 +738,13 @@ function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = '
   }
   if (!targetDiv) return;
 
+  const hasChild = targetDiv.firstChild;
+
+
   const fmt = (v, d=2) => (typeof v === 'number' ? v.toFixed(d) : v);
 
   let html = `<div class="color-analysis-summary">`;
+  if (hasChild) html += `<hr>`
 
   html += `<div class="color-analysis-title">${fromSystem} <span class="color-analysis-arrow">&#8594;</span> ${toSystem}</div>`;
 
@@ -664,8 +756,8 @@ function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = '
   if (analysis.colorThatChangedTheMost && analysis.colorThatChangedTheMost.coord && analysis.colorThatChangedTheMost.color) {
     const c = analysis.colorThatChangedTheMost.color;
     html += `<b>Color that changed the most:</b> 
-      <span class="color-analysis-swatch" style="background:rgb(${c.join(',')});"></span>
-      rgb(${c.join(', ')}) at (${analysis.colorThatChangedTheMost.coord.x}, ${analysis.colorThatChangedTheMost.coord.y})<br>`;
+      <span class="color-analysis-swatch" style="background:rgb(${c.map(v=>Math.round(v)).join(',')});"></span>
+      rgb(${c.map(v=>Math.round(v)).join(', ')}) at (${analysis.colorThatChangedTheMost.coord.x}, ${analysis.colorThatChangedTheMost.coord.y})<br>`;
   }
 
   html += `<b>Percent of changed pixels:</b> ${fmt(analysis.percentChanged, 2)}%<br>`;
@@ -674,13 +766,14 @@ function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = '
     html += `<b>Channel-wise avg error:</b> [${analysis.channelStats.avg.map(v=>fmt(v,3)).join(', ')}] (out of 255)<br>`;
     html += `<b>Channel-wise max error:</b> [${analysis.channelStats.max.map(v=>fmt(v,3)).join(', ')}] (out of 255)<br>`;
   }
-
   html += `</div>`;
 
   const analysisDiv = document.createElement('div');
   analysisDiv.className = 'color-analysis-summary';
   analysisDiv.innerHTML = html.replace(/^<div[^>]*>|<\/div>$/g, '');
-
   while (isOnly && targetDiv.firstChild) targetDiv.removeChild(targetDiv.firstChild);
   targetDiv.appendChild(analysisDiv);
+  if (!isOnly && hasChild) {
+    targetDiv.scrollTop = targetDiv.scrollHeight;
+  }
 }
