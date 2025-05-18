@@ -1,6 +1,4 @@
-// console.log('Script loaded');
 
-// --- Drag resize for wrapper-log-item (horizontal) ---
 const logBody = document.getElementById('wrapper-log-body');
 
 const toggleLogBodyDown = document.getElementById('toggle-log-body-down');
@@ -45,7 +43,6 @@ window.addEventListener('mousemove', function(e) {
   newWidth = Math.max(320, Math.min(600, newWidth));
   wrapperControl.style.width = newWidth + 'px';
 
-  // ОНОВЛЕНО: wrapper-main і wrapper-canvas займають залишок простору
   const wrapperMain = document.querySelector('.wrapper-main');
   const wrapperCanvas = document.getElementById('wrapper-canvas');
   wrapperMain.style.flex = '1 1 0%';
@@ -53,7 +50,6 @@ window.addEventListener('mousemove', function(e) {
   wrapperCanvas.style.flex = '1 1 0%';
   wrapperCanvas.style.width = 'auto';
 
-  // ОНОВЛЕНО: завжди ставимо right згідно з реальною шириною wrapperControl
   const actualWidth = parseFloat(getComputedStyle(wrapperControl).width);
   resizeControlBar.style.right = actualWidth + 'px';
 
@@ -109,7 +105,6 @@ window.addEventListener('mousemove', function(e) {
   newHeight = Math.max(100, Math.min(600, newHeight));
   logBody.style.height = newHeight + 'px';
 
-  // ОНОВЛЕНО: wrapper-main і wrapper-canvas займають залишок простору по висоті
   const wrapperMain = document.querySelector('.wrapper-main');
   const wrapperCanvas = document.getElementById('wrapper-canvas');
   wrapperMain.style.flex = '1 1 0%';

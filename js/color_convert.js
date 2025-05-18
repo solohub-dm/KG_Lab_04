@@ -1,4 +1,4 @@
-// Функція для перевірки валідності даних в різних колірних просторах
+
 function validateColor(color, space) {
   switch (space) {
     case 'RGB':
@@ -40,7 +40,6 @@ function validateColor(color, space) {
   }
 }
 
-// Нормалізація RGB до [0,1]
 function normalizeArr(arr) {
   return arr.map(x => x / 255);
 }
@@ -51,8 +50,6 @@ function normalizeArr(arr) {
 
 // RGB -> CMYK
 function RGBtoCMYK([r, g, b], muls = [1,1,1,1]) {
-  // console.log('RGBtoCMYK r g b: ', r, g, b);
-  // console.log('RGBtoCMYK muls: ', muls);
   let [R, G, B] = normalizeArr([r, g, b]);
   let K = 1 - Math.max(R, G, B);
   let C = 0, M = 0, Y = 0;
@@ -67,33 +64,30 @@ function RGBtoCMYK([r, g, b], muls = [1,1,1,1]) {
   M = Math.round(M * 100 * muls[1]);
   Y = Math.round(Y * 100 * muls[2]);
   K = Math.round(K * 100 * muls[3]);
-  // Clamp values to [0, 100]
+
   C = Math.max(0, Math.min(100, C));
   M = Math.max(0, Math.min(100, M));
   Y = Math.max(0, Math.min(100, Y));
   K = Math.max(0, Math.min(100, K));
-  // console.log('RGBtoCMYK C M Y K: ', C, M, Y, K);
+
   return [C, M, Y, K];
 }
 
 // CMYK -> RGB
 function CMYKtoRGB([C, M, Y, K], muls = [1,1,1]) {
-  // console.log('CMYKtoRGB C M Y K: ', C, M, Y, K);
-  // console.log('CMYKtoRGB muls: ', muls);
-  // Convert CMYK input to [0,1] range (no multipliers applied to input)
   C = C / 100; M = M / 100; Y = Y / 100; K = K / 100;
   let R = 255 * (1 - C) * (1 - K);
   let G = 255 * (1 - M) * (1 - K);
   let B = 255 * (1 - Y) * (1 - K);
-  // Apply multipliers to output RGB only
+
   R = Math.round(R * (muls[0] ?? 1));
   G = Math.round(G * (muls[1] ?? 1));
   B = Math.round(B * (muls[2] ?? 1));
-  // Clamp to [0,255]
+
   R = Math.max(0, Math.min(255, R));
   G = Math.max(0, Math.min(255, G));
   B = Math.max(0, Math.min(255, B));
-  // console.log('CMYKtoRGB R G B: ', R, G, B);
+
   return [R, G, B];
 }
 
@@ -161,11 +155,11 @@ function HSBtoRGB([H, S, V], muls = [1,1,1]) {
   let R = Math.round((r + m) * 255);
   let G = Math.round((g + m) * 255);
   let B = Math.round((b + m) * 255);
-  // Apply multipliers to output only
+
   R = Math.round(R * (muls[0] ?? 1));
   G = Math.round(G * (muls[1] ?? 1));
   B = Math.round(B * (muls[2] ?? 1));
-  // Clamp to [0,255]
+
   R = Math.max(0, Math.min(255, R));
   G = Math.max(0, Math.min(255, G));
   B = Math.max(0, Math.min(255, B));
@@ -178,9 +172,6 @@ function HSBtoRGB([H, S, V], muls = [1,1,1]) {
 
 // RGB -> XYZ
 function RGBtoXYZ([R, G, B], muls = [1,1,1]) {
-  // console.log("===================================");
-  // console.log('RGBtoXYZ R G B: ', R, G, B);
-
   [R, G, B] = normalizeArr([R, G, B]).map(c =>
     c > 0.04045 ? Math.pow((c + 0.055) / 1.055, 2.4) : c / 12.92
   );
@@ -188,26 +179,20 @@ function RGBtoXYZ([R, G, B], muls = [1,1,1]) {
   let X = R * 0.4124 + G * 0.3576 + B * 0.1805;
   let Y = R * 0.2126 + G * 0.7152 + B * 0.0722;
   let Z = R * 0.0193 + G * 0.1192 + B * 0.9505;
-  // Нормалізуємо XYZ до [0,1] (відносно D65 reference white)
+
   X = (X / 95.047) * muls[0];
   Y = (Y / 100.0) * muls[1];
   Z = (Z / 108.883) * muls[2];
-  // Clamp
+
   X = Math.max(0, Math.min(1, X));
   Y = Math.max(0, Math.min(1, Y));
   Z = Math.max(0, Math.min(1, Z));
-
-  // console.log('RGBtoXYZ X Y Z: ', X, Y, Z);
 
   return [X, Y, Z];
 }
 
 // XYZ -> RGB
 function XYZtoRGB([X, Y, Z], muls = [1,1,1]) {
-  // console.log("===================================");
-
-  // console.log('XYZtoRGB X Y Z: ', X, Y, Z);
-  // Де-нормалізуємо XYZ
   X = X * 95.047;
   Y = Y * 100.0;
   Z = Z * 108.883;
@@ -226,12 +211,10 @@ function XYZtoRGB([X, Y, Z], muls = [1,1,1]) {
   R = Math.round(R * (muls[0] ?? 1));
   G = Math.round(G * (muls[1] ?? 1));
   B = Math.round(B * (muls[2] ?? 1));
-  // Apply multipliers to output only
+
   R = Math.round(Math.max(0, Math.min(255, R)));
   G = Math.round(Math.max(0, Math.min(255, G)));
   B = Math.round(Math.max(0, Math.min(255, B)));
-
-  // console.log('XYZtoRGB R G B: ', R, G, B);
 
   return [R, G, B];
 }
@@ -242,7 +225,6 @@ function XYZtoRGB([X, Y, Z], muls = [1,1,1]) {
 
 // XYZ -> Lab
 function XYZtoLab([X, Y, Z], muls = [1,1,1]) {
-  // Де-нормалізуємо XYZ
   X = X * 95.047;
   Y = Y * 100.0;
   Z = Z * 108.883;
@@ -254,11 +236,11 @@ function XYZtoLab([X, Y, Z], muls = [1,1,1]) {
   let L = (116 * fy) - 16;
   let a = 500 * (fx - fy);
   let b = 200 * (fy - fz);
-  // Apply multipliers to output only
+
   L = L * (muls[0] ?? 1);
   a = a * (muls[1] ?? 1);
   b = b * (muls[2] ?? 1);
-  // Clamp outputs to Lab valid ranges
+
   L = Math.max(0, Math.min(100, L));
   a = Math.max(-200, Math.min(200, a));
   b = Math.max(-200, Math.min(200, b));
@@ -274,26 +256,25 @@ function LabtoXYZ([L, a, b], muls = [1,1,1]) {
     let t3 = Math.pow(t, 3);
     return t3 > 0.008856 ? t3 : (t - 16 / 116) / 7.787;
   });
-  // Нормалізуємо XYZ до [0,1]
+
   let xNorm = X * 95.047 / 95.047;
   let yNorm = Y * 100.0 / 100.0;
   let zNorm = Z * 108.883 / 108.883;
-  // Apply multipliers to the output only
+
   xNorm = xNorm * (muls[0] ?? 1);
   yNorm = yNorm * (muls[1] ?? 1);
   zNorm = zNorm * (muls[2] ?? 1);
-  // Clamp
+
   xNorm = Math.max(0, Math.min(1, xNorm));
   yNorm = Math.max(0, Math.min(1, yNorm));
   zNorm = Math.max(0, Math.min(1, zNorm));
+
   return [xNorm, yNorm, zNorm];
 }
 
 // ---------------------------
 // Роутер кольорів
 // ---------------------------
-
-// colorRouter з множниками
 function colorRouterMul(from, to, value, muls, opts) {
   if (from === to) {
     if (muls && Array.isArray(muls)) {
@@ -360,13 +341,13 @@ function colorRouterMul(from, to, value, muls, opts) {
   for (let i = 0; i < path.length - 1; i++) {
     const func = convert[path[i]]?.[path[i + 1]];
     if (!func) throw new Error(`Missing converter: ${path[i]} → ${path[i + 1]}`);
-    // Для останньої функції передаємо muls
+
     if (i === path.length - 2 && muls && Array.isArray(muls)) {
       result = func(result, muls);
     } else {
       result = func(result);
     }
-    // Діагностика: перевірка валідності після кожного кроку
+
     if (!validateColor(result, path[i+1])) {
       console.error('Invalid color after', path[i], '→', path[i+1], result);
       throw new Error(`Invalid intermediate color for space ${path[i+1]}`);

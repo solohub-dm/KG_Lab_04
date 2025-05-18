@@ -13,10 +13,9 @@ const inputEnd = document.getElementById('hueEnd');
 
 let hueStart = parseInt(inputStart.value, 10);
 let hueEnd = parseInt(inputEnd.value, 10);
-let dragging = null; // 'start' | 'end' | null
+let dragging = null; 
 
 function drawHueRing() { 
-  // Draw hue gradient ring pixel by pixel
   const image = ctx.createImageData(size, size);
   const data = image.data;
   for (let y = 0; y < size; y++) {
@@ -52,7 +51,6 @@ function drawHueRing() {
 
   ctx.stroke();
   ctx.restore();
-  // inner arc
   ctx.save();
   ctx.beginPath();
   ctx.arc(center, center, innerRadius - 2, 0, 2*Math.PI, false);
@@ -88,7 +86,7 @@ function drawRangeArc(start, end, width) {
   let a1 = (start - 90) * Math.PI / 180;
   let a2 = (end - 90) * Math.PI / 180;
   if (a2 < a1) a2 += Math.PI * 2;
-  // Використовуємо колір зовнішнього контуру повзунка
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(center, center, outerRadius + 2, a1, a2, false);
@@ -98,7 +96,7 @@ function drawRangeArc(start, end, width) {
   ctx.shadowBlur = 6;
   ctx.stroke();
   ctx.restore();
-  // inner arc
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(center, center, innerRadius - 2, a1, a2, false);
@@ -109,21 +107,19 @@ function drawRangeArc(start, end, width) {
   ctx.stroke();
   ctx.restore();
 
-        ctx.save();
+  ctx.save();
   ctx.beginPath();
   ctx.arc(center, center, outerRadius -7, a1, a2, false);
   ctx.strokeStyle = '#f8fcff'; 
   ctx.lineWidth = 3;
-
   ctx.stroke();
   ctx.restore();
-  // inner arc
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(center, center, innerRadius + 7, a1, a2, false);
   ctx.strokeStyle = '#f8fcff';
   ctx.lineWidth = 3;
-
   ctx.stroke();
   ctx.restore();
 
@@ -141,8 +137,7 @@ function drawKnob(angle, highlight, isStart) {
   ctx.shadowColor = highlight ? '#21232c5c' : '#21232c5c';
   ctx.shadowBlur = highlight ? 6 : 0;
   ctx.stroke();
-  // Малюємо півкруг, зрізаний паралельно до радіуса
-  // Визначаємо напрямок радіуса
+  
   let startAngle;
   let endAngle;
   if (isStart) {
@@ -164,7 +159,6 @@ function drawKnob(angle, highlight, isStart) {
 function draw() {
   ctx.clearRect(0, 0, size, size);
   drawHueRing();
-  // Draw selected range
   let start = hueStart;
   let end = hueEnd;
   let diff = (end - start + 360) % 360;
@@ -180,7 +174,6 @@ function draw() {
 draw();
 
 function getAngleFromPoint(x, y) {
-  // x, y are in client coordinates, need to scale to canvas coordinates
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -194,7 +187,6 @@ function getAngleFromPoint(x, y) {
 }
 
 function knobHitTest(angle, mx, my) {
-  // mx, my are in client coordinates, need to scale to canvas coordinates
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -248,15 +240,12 @@ inputEnd.addEventListener('input', (e) => {
   draw();
 });
 
-// --- Автоматичне переведення при зміні hue-range-selector ---
 ['hueStart', 'hueEnd'].forEach(id => {
   const el = document.getElementById(id);
   if (el) {
-    // При знятті фокусу
     el.addEventListener('blur', () => {
       window.submitActiveConvertForm && window.submitActiveConvertForm();
     });
-    // При натисканні Enter
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         window.submitActiveConvertForm && window.submitActiveConvertForm();

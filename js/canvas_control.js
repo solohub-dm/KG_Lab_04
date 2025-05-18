@@ -11,10 +11,6 @@ const canvasFinal = document.getElementById('canvas-final');
 const canvasFinalOverlay = document.getElementById('canvas-final-overlay');
 const wrapperFinal = canvasFinal.parentElement;
 
-
-  // const wrapperInfluence = document.getElementById('wrapper-convert-influence');
-  // const wrapperInfluenceInfo = document.getElementById('wrapper-convert-item-body-calc');
-
 const convertButtons = document.querySelectorAll('.color-space-btn');
 window.convertButtons = convertButtons;
 const infoText = document.getElementById('text-convert-item-body-info');
@@ -22,10 +18,6 @@ const infoText = document.getElementById('text-convert-item-body-info');
 function setInitialState() {
   wrapperInitial.style.display = 'none';
   wrapperFinal.style.display = 'none';
-
-  // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
-
   placeholder.style.display = 'flex';
   convertButtons.forEach(btn => btn.disabled = true);
   infoText.textContent = 'Open file to convert';
@@ -60,10 +52,8 @@ fileInput.addEventListener('change', e => {
   }
 });
 
-// Додайте глобальну змінну для оригінальної матриці RGB
 let originalRgbMatrix = null;
 
-// ...далі у функції handleFile(file):
 function handleFile(file) {
   const reader = new FileReader();
   reader.onload = function(ev) {
@@ -75,7 +65,7 @@ function handleFile(file) {
       showInitialCanvas();
       infoText.textContent = 'Choose system to convert';
       convertButtons.forEach(btn => btn.disabled = false);
-      // --- Створюємо currentColorMatrix з оригінального зображення ---
+
       const tmpCanvas = document.createElement('canvas');
       tmpCanvas.width = img.width;
       tmpCanvas.height = img.height;
@@ -83,14 +73,14 @@ function handleFile(file) {
       tmpCtx.drawImage(img, 0, 0, img.width, img.height);
       const imgData = tmpCtx.getImageData(0, 0, img.width, img.height);
       currentColorMatrix = imageDataToMatrix(imgData);
-      // --- Зберігаємо оригінальну матрицю у RGB ---
+
       originalRgbMatrix = imageDataToMatrix(imgData);
       currentColorSpace = 'RGB';
       window.currentColorMatrix = currentColorMatrix;
       window.matrixToImageData = matrixToImageData;
       undoStack = [cloneMatrix(currentColorMatrix)];
       redoStack = [];
-      // --- ОНОВЛЕНО: оновити заголовок ---
+
       const titleOp = document.getElementById('title-operation');
       titleOp.textContent = currentColorSpace;
       updateTitleOperation('loaded', currentColorSpace);
@@ -125,40 +115,33 @@ function clearOverlay(ctx) {
 }
 
 function drawSelectionOverlay(ctx, selection) {
-  // Очистимо канвас повністю (переконуємося, що він прозорий)
+
   clearOverlay(ctx);
-  
-  // Якщо немає виділення, немає що малювати
   if (!selection) return;
   
-  // 1. Затінюємо всю область з прозорістю
   ctx.save();
-  ctx.globalAlpha = 0.3; // 30% затемнення
+  ctx.globalAlpha = 0.3; 
   ctx.fillStyle = '#222';
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.restore();
   
-  // 2. Вирізаємо виділену область (робимо її прозорою)
   ctx.save();
   ctx.globalCompositeOperation = 'destination-out';
   ctx.fillStyle = 'rgba(0,0,0,1)';
   ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
   ctx.restore();
   
-  // 3. Малюємо жовту рамку виділення
   ctx.save();
   ctx.globalCompositeOperation = 'source-over';
   ctx.strokeStyle = '#ffe600';
   ctx.lineWidth = 2;
   ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
   
-  // Додаємо внутрішню рамку для кращої видимості на світлих ділянках
   ctx.strokeStyle = 'rgba(0,0,0,0.5)';
   ctx.lineWidth = 1;
   ctx.strokeRect(selection.x + 1, selection.y + 1, selection.w - 2, selection.h - 2);
   ctx.restore();
-  
-  // 4. Малюємо маркери (хендли) по кутах
+
   ctx.save();
   ctx.fillStyle = '#ffe600';
   const handles = [
@@ -167,10 +150,10 @@ function drawSelectionOverlay(ctx, selection) {
     [selection.x, selection.y + selection.h], 
     [selection.x + selection.w, selection.y + selection.h],
   ];
-  // Спочатку малюємо тінь для кращої видимості
+ 
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
   handles.forEach(([hx, hy]) => ctx.fillRect(hx - 4, hy - 4, 8, 8));
-  // Потім малюємо жовті маркери
+
   ctx.fillStyle = '#ffe600';
   handles.forEach(([hx, hy]) => ctx.fillRect(hx - 3, hy - 3, 6, 6));
   ctx.restore();
@@ -192,14 +175,11 @@ function syncDrawSelection() {
 }
 
 function clearSelection() {
-  // console.log('clearSelection');
   const hadSelection = !!selection;
   selection = null;
   syncDrawSelection && syncDrawSelection();
-  if (hadSelection) {
-    // Після зняття виділення застосувати конвертацію для всього зображення
+  if (hadSelection) 
     window.submitActiveConvertForm();
-  }
 }
 window.clearSelection = clearSelection;
 
@@ -209,9 +189,6 @@ function showInitialCanvas() {
   wrapperInitial.style.display = 'flex';
   wrapperFinal.style.display = 'none';
   
-  // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
-
   const initialContainer = canvasInitial.parentElement;
   initialContainer.style.maxWidth = 'none';
   initialContainer.style.flex = '0 0 auto'; 
@@ -234,9 +211,6 @@ function showBothCanvases() {
   wrapperInitial.style.margin = '0';
   wrapperFinal.style.margin = '0';
   syncOverlayVisibility();
-
-  // wrapperInfluence.style.display = 'block';
-  // wrapperInfluenceInfo.style.display = 'flex';
 
   const activeFormDiv = Array.from(document.querySelectorAll('.wrapper-convert-item-body'))
     .find(div => getComputedStyle(div).display === 'flex');
@@ -294,7 +268,6 @@ function fitAndDrawCanvases() {
 
   canvasInitial.style.width = size.width + 'px';
   canvasInitial.style.height = size.height + 'px';
-  // console.log("window.currentColorMatrix", window.currentColorMatrix);
   const ctx1 = canvasInitial.getContext('2d');
   ctx1.clearRect(0, 0, size.width, size.height);
   if (window.currentColorMatrix) {
@@ -316,12 +289,9 @@ function fitAndDrawCanvases() {
 
     canvasFinal.style.width = size.width + 'px';
     canvasFinal.style.height = size.height + 'px';
-    // console.log("window.previewMatrix", window.previewMatrix);
     const ctx2 = canvasFinal.getContext('2d');
     ctx2.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
-    // console.log('canvasFinal pre ', canvasFinal.width, canvasFinal.height);
     if (window.previewMatrix && typeof window.matrixToImageData === 'function') {
-      // console.log('canvasFinal previewMatrix ', window.previewMatrix);
       const imgDataF = window.matrixToImageData(window.previewMatrix);
       const tmpCanvasF = document.createElement('canvas');
       tmpCanvasF.width = imgDataF.width;
@@ -329,12 +299,8 @@ function fitAndDrawCanvases() {
       tmpCanvasF.getContext('2d').putImageData(imgDataF, 0, 0);
       ctx2.drawImage(tmpCanvasF, 0, 0, canvasFinal.width, canvasFinal.height);
     } else {
-      // console.log('No previewMatrix or matrixToImageData function');
-      // console.log(window.previewMatrix, typeof window.matrixToImageData);
       ctx2.drawImage(loadedImage, 0, 0, canvasFinal.width, canvasFinal.height);
     }
-    // console.log('canvasFinal after ', canvasFinal.width, canvasFinal.height);
-
   }
 
   syncOverlayVisibility();
@@ -346,7 +312,7 @@ window.addEventListener('resize', function() {
 });
 
 let selection = null;
-let dragMode = null; // 'move', 'resize', 'new', null
+let dragMode = null; 
 let dragOffset = {x:0, y:0};
 let resizeEdge = null;
 let isMouseDown = false;
@@ -376,7 +342,6 @@ function getResizeEdge(sel, pos, tol=6) {
   );
 }
 
-// --- EVENTS ---
 [canvasInitialOverlay, canvasFinalOverlay].forEach(canvas => {
   canvas.addEventListener('mousedown', function(e) {
     if (!selectionEnabled) return;
@@ -398,7 +363,6 @@ function getResizeEdge(sel, pos, tol=6) {
         return;
       }
     }
-    // Якщо клік поза selection — чекаємо drag для створення нового selection
     dragMode = null;
   });
 
@@ -420,18 +384,15 @@ function getResizeEdge(sel, pos, tol=6) {
     canvas.style.cursor = cursor;
 
     if (!isMouseDown) return;
-
-    // Якщо ще не визначено dragMode, перевіряємо чи це drag для нового selection
     if (!dragMode && mouseDownPos) {
       const dx = pos.x - mouseDownPos.x;
       const dy = pos.y - mouseDownPos.y;
       if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
-        // Починаємо новий selection
         selection = {x: mouseDownPos.x, y: mouseDownPos.y, w: 0, h: 0};
         dragMode = 'new';
         dragOffset = {x: mouseDownPos.x, y: mouseDownPos.y};
       } else {
-        return; // ще не drag
+        return; 
       }
     }
 
@@ -440,12 +401,12 @@ function getResizeEdge(sel, pos, tol=6) {
       let y1 = mouseDownPos.y;
       let x2 = pos.x;
       let y2 = pos.y;
-      // Обчислюємо верхній лівий кут і розміри
+
       let x = Math.max(0, Math.min(x1, x2));
       let y = Math.max(0, Math.min(y1, y2));
       let w = Math.abs(x2 - x1);
       let h = Math.abs(y2 - y1);
-      // Обмеження по canvas
+
       w = Math.min(w, canvas.width - x);
       h = Math.min(h, canvas.height - y);
       w = Math.max(SELECTION_MIN_SIZE, w);
@@ -495,7 +456,6 @@ function getResizeEdge(sel, pos, tol=6) {
     isMouseDown = false;
     mouseDownPos = null;
     if (dragMode === null && selection) {
-      // Якщо був простий клік поза selection — скинути selection
       const pos = getMousePos(canvas, e);
       const edge = getResizeEdge(selection, pos);
       if (!edge) {
@@ -504,7 +464,7 @@ function getResizeEdge(sel, pos, tol=6) {
         return;
       }
     }
-    setSelectionBase(); // <--- Додаємо тут
+    setSelectionBase(); 
     dragMode = null;
     resizeEdge = null;
   }, true);
@@ -516,22 +476,16 @@ function getResizeEdge(sel, pos, tol=6) {
     resizeEdge = null;
   });
 
-  // Додаємо double click для зняття виділення
   canvas.addEventListener('dblclick', function(e) {
-    // console.log('dblclick');
     if (!selectionEnabled) return;
     if (!loadedImage) return;
     if (!selection) return;
     const pos = getMousePos(canvas, e);
-    // Якщо подвійний клік всередині selection
     if (
       pos.x >= selection.x && pos.x <= selection.x + selection.w &&
       pos.y >= selection.y && pos.y <= selection.y + selection.h
     ) {
-      // selection = null;
       selectionBase = null;
-      // syncDrawSelection();
-      // if (window.submitActiveConvertForm) window.submitActiveConvertForm();
       clearSelection();
     }
   });
@@ -542,11 +496,9 @@ function setSelectionEnabled(enabled) {
   selectionEnabled = enabled;
 }
 
-// --- Глобальна змінна для збереження selection і розміру canvas при встановленні виділення ---
 let selectionBase = null;
 
 function setSelectionBase() {
-  // Зберігаємо координати, розмір selection і розмір canvasInitial
   if (selection && canvasInitial) {
     selectionBase = {
       x: selection.x,
@@ -685,7 +637,7 @@ function setSelectionBase() {
         return;
       }
     }
-    setSelectionBase(); // <--- Додаємо тут
+    setSelectionBase();
     dragMode = null;
     resizeEdge = null;
   }, true);
@@ -698,7 +650,6 @@ function setSelectionBase() {
   });
 });
 
-// Оновлена функція масштабування selection
 function updateSelectionForCanvasResize(prevWidth, prevHeight, newWidth, newHeight) {
   if (!selectionBase) return;
   if (!selection) return;
@@ -708,11 +659,8 @@ function updateSelectionForCanvasResize(prevWidth, prevHeight, newWidth, newHeig
   selection.y = selectionBase.y * scaleY;
   selection.w = selectionBase.w * scaleX;
   selection.h = selectionBase.h * scaleY;
-  // if (window.updateCurrentColorMatrixFromCanvas) window.updateCurrentColorMatrixFromCanvas();
-  // if (window.submitActiveConvertForm) window.submitActiveConvertForm();
 }
 
-// Масштабування selection при зміні розміру wrapper-canvas-item
 function observeWrapperCanvasItemResize() {
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   wrappers.forEach(wrapper => {
@@ -734,25 +682,22 @@ function observeWrapperCanvasItemResize() {
   });
 }
 
-// Викликаємо після завантаження сторінки
 window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
 
-// --- Magnifier logic ---
 (function() {
   const wrapper = document.getElementById('wrapper-canvas-item-initial');
   const canvas = document.getElementById('canvas-initial');
   const magnifier = document.getElementById('canvas-magnifier');
   if (!wrapper || !canvas || !magnifier) return;
 
-  // Створюємо внутрішній canvas для лупи
   let magCanvas = document.createElement('canvas');
   magCanvas.width = 80;
   magCanvas.height = 80;
   magnifier.innerHTML = '';
   magnifier.appendChild(magCanvas);
 
-  const MAG_SIZE = 80; // px
-  const MAG_SRC = 5;    // 5x5 пікселів
+  const MAG_SIZE = 80; 
+  const MAG_SRC = 5;    
   const PIXEL_SIZE = MAG_SIZE / MAG_SRC;
   const MAG_OFFSET_X = -40;
   const MAG_OFFSET_Y = -130;
@@ -760,14 +705,14 @@ window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
     const rect = canvas.getBoundingClientRect();
     const cx = Math.round((x - rect.left) * (canvas.width / rect.width));
     const cy = Math.round((y - rect.top) * (canvas.height / rect.height));
-    // Центрована область 5x5
+
     const sx = Math.max(0, Math.min(canvas.width - MAG_SRC, cx - Math.floor(MAG_SRC/2)));
     const sy = Math.max(0, Math.min(canvas.height - MAG_SRC, cy - Math.floor(MAG_SRC/2)));
     const ctx = magCanvas.getContext('2d');
     ctx.clearRect(0,0,magCanvas.width,magCanvas.height);
-    // Зчитуємо 5x5 пікселів
+
     const imgData = canvas.getContext('2d').getImageData(sx, sy, MAG_SRC, MAG_SRC);
-    // Малюємо кожен піксель крупно
+
     for (let py = 0; py < MAG_SRC; py++) {
       for (let px = 0; px < MAG_SRC; px++) {
         const i = (py * MAG_SRC + px) * 4;
@@ -776,43 +721,42 @@ window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
         ctx.fillRect(px * PIXEL_SIZE, py * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
       }
     }
-    // Виділяємо центральний піксель рамкою
     ctx.save();
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#ffff00'; // Яскраво-жовтий
+    ctx.strokeStyle = '#ffff00'; 
     ctx.shadowColor = '#000';
     ctx.shadowBlur = 2;
     ctx.strokeRect(2 * PIXEL_SIZE, 2 * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
     ctx.restore();
-    // Малюємо сітку
+
     ctx.save();
     ctx.strokeStyle = 'rgba(0,0,0,0.4)';
     ctx.lineWidth = 1;
     for (let i = 0; i <= MAG_SRC; i++) {
-      // Вертикальні
+
       ctx.beginPath();
       ctx.moveTo(i * PIXEL_SIZE, 0);
       ctx.lineTo(i * PIXEL_SIZE, MAG_SIZE);
       ctx.stroke();
-      // Горизонтальні
+
       ctx.beginPath();
       ctx.moveTo(0, i * PIXEL_SIZE);
       ctx.lineTo(MAG_SIZE, i * PIXEL_SIZE);
       ctx.stroke();
     }
     ctx.restore();
-    // Позиціонуємо magnifier зі зміщенням відносно курсора
+
     magnifier.style.display = 'block';
-  const wrapperRect = wrapper.getBoundingClientRect();
-  const magHeight = magnifier.offsetHeight || 60;
-  // left/top відносно wrapper
-  magnifier.style.left = (x - wrapperRect.left) + 'px';
-  magnifier.style.top = (y - wrapperRect.top - magHeight) + 'px';
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const magHeight = magnifier.offsetHeight || 60;
+
+    magnifier.style.left = (x - wrapperRect.left) + 'px';
+    magnifier.style.top = (y - wrapperRect.top - magHeight) + 'px';
   }
 
   wrapper.addEventListener('mousemove', function(e) {
     if (window._canvasContextMenuOpen) return;
-    // Показуємо лупу лише якщо відображається тільки initial
+
     const final = document.getElementById('wrapper-canvas-item-final');
     if (!final || final.style.display === 'flex') {
       magnifier.style.display = 'none';
@@ -829,20 +773,6 @@ window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
 const panelColors = document.getElementById('wrapper-control-pixel-color');
 panelColors.style.display = 'none';
 
-// --- Показ/приховування .wrapper-control-pixel-color ---
-function updatePixelColorPanelVisibility() {
-  // console.log('updatePixelColorPanelVisibility');
-  //   const panelColor = document.getElementById('wrapper-control-pixel-color');
-  // const initialVisible = wrapperInitial && getComputedStyle(wrapperInitial).display !== 'none';
-  // const finalVisible = wrapperFinal && getComputedStyle(wrapperFinal).display !== 'none' && wrapperFinal.style.display === 'flex';
-  // if (loadedImage && initialVisible && !finalVisible) {
-  //   panelColor.style.display = '';
-  // } else {
-  //   panelColor.style.display = 'none';
-  // }
-}
-
-// --- Функція для оновлення панелі кольору пікселя ---
 function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
   const set = (id, val, bg) => {
     const el = document.getElementById(id);
@@ -850,12 +780,10 @@ function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
     if (el) {
       if (valEl) valEl.textContent = val;
       el.parentElement.style.background = bg;
-      // Also clear the <p> textContent except for the label and value span
-      // (if needed, but the label is static in HTML)
     }
   };
   set('title-pixel-color-RGB', rgb.join(', '), `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`);
-  // CMYK background: convert CMYK to RGB using colorRouterMul if available
+
   let cmykBg = '';
   if (window.colorRouterMul) {
     const cmykRgb = window.colorRouterMul('CMYK', 'RGB', cmyk, [1,1,1]);
@@ -865,7 +793,7 @@ function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
     cmykBg = `rgb(${Math.round(255 * (1 - c) * (1 - k))},${Math.round(255 * (1 - m) * (1 - k))},${Math.round(255 * (1 - y) * (1 - k))})`;
   }
   set('title-pixel-color-CMYK', cmyk.map(x=>x.toFixed(2)).join(', '), cmykBg);
-  // HSB background: convert HSB to RGB using colorRouterMul if available
+
   let hsbBg = '';
   if (window.colorRouterMul) {
     const hsbRgb = window.colorRouterMul('HSB', 'RGB', hsb, [1,1,1]);
@@ -875,14 +803,14 @@ function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
     hsbBg = `hsl(${Math.round(h)},${Math.round(s*100)}%,${Math.round(v*100/2)}%)`;
   }
   set('title-pixel-color-HSB', hsb.map(x=>x.toFixed(2)).join(', '), hsbBg);
-  // XYZ background: convert XYZ to RGB using colorRouterMul if available
+
   let xyzBg = '';
   if (window.colorRouterMul) {
     const xyzRgb = window.colorRouterMul('XYZ', 'RGB', xyz, [1,1,1]);
     xyzBg = `rgb(${xyzRgb[0]},${xyzRgb[1]},${xyzRgb[2]})`;
   }
   set('title-pixel-color-XYZ', xyz.map(x=>x.toFixed(2)).join(', '), xyzBg);
-  // Lab background: convert Lab to RGB using colorRouterMul if available
+
   let labBg = '';
   if (window.colorRouterMul) {
     const labRgb = window.colorRouterMul('Lab', 'RGB', lab, [1,1,1]);
@@ -891,11 +819,9 @@ function updatePixelColorPanels(rgb, cmyk, hsb, xyz, lab) {
   set('title-pixel-color-Lab', lab.map(x=>x.toFixed(2)).join(', '), labBg);
 }
 
-// --- Наведення на canvas для визначення кольору пікселя ---
 canvasInitialOverlay.addEventListener('mousemove', function(e) {
   if (window._canvasContextMenuOpen) return;
   console.log('mousemove');
-  updatePixelColorPanelVisibility();
   if (!loadedImage || wrapperFinal.style.display === 'flex') return;
   const rect = canvasInitial.getBoundingClientRect();
   const x = Math.floor((e.clientX - rect.left) * (canvasInitial.width / rect.width));
@@ -904,7 +830,6 @@ canvasInitialOverlay.addEventListener('mousemove', function(e) {
   const ctx = canvasInitial.getContext('2d');
   const data = ctx.getImageData(x, y, 1, 1).data;
   const rgb = [data[0], data[1], data[2]];
-  // --- Перевести у всі системи ---
   const cmyk = window.colorRouterMul ? window.colorRouterMul('RGB', 'CMYK', rgb, [1,1,1,1]) : [0,0,0,0];
   const hsb = window.colorRouterMul ? window.colorRouterMul('RGB', 'HSB', rgb, [1,1,1]) : [0,0,0];
   const xyz = window.colorRouterMul ? window.colorRouterMul('RGB', 'XYZ', rgb, [1,1,1]) : [0,0,0];
@@ -924,19 +849,8 @@ function clearPixelColorPanels() {
 }
 
 canvasInitialOverlay.addEventListener('mouseleave', function() {
-  
-  updatePixelColorPanelVisibility();
-  // Очистити панелі
   clearPixelColorPanels();
 });
-
-// --- Оновлювати видимість панелі при завантаженні/зміні режиму ---
-window.addEventListener('DOMContentLoaded', updatePixelColorPanelVisibility);
-window.addEventListener('resize', updatePixelColorPanelVisibility);
-
-
-
-
 
   const wrapper = document.getElementById('wrapper-canvas-item-initial');
   const menu = document.getElementById('canvas-context-menu');

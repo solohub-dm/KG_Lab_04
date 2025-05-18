@@ -1,7 +1,6 @@
 const wrapperInfluenceSum = document.getElementById('wrapper-log-summary-body');
 const wrapperInfluenceLog = document.getElementById('wrapper-log-influence-body');
 
-// --- Title-operation logic ---
 function updateTitleOperation(mode, from, to) {
   const titleOp = document.getElementById('title-operation');
   if (mode === 'before-load') {
@@ -13,23 +12,20 @@ function updateTitleOperation(mode, from, to) {
   }
 }
 
-// --- Відображення другого canvas після вибору системи ---
 window.convertButtons.forEach(btn => {
   btn.addEventListener('click', function() {
     if (!loadedImage) return;
-    // Активуємо відповідну кнопку
     window.convertButtons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    // Показуємо відповідний блок форми, приховуємо інші
+
     const space = btn.dataset.space;
     document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
       if (div.id === 'wrapper-convert-item-body-' + space) {
         div.style.display = 'flex';
-        // Скидаємо значення input-ів у формі при переході між системами
+
         const form = div.querySelector('form');
         if (form) {
           form.reset();
-          // Синхронізуємо range і number після reset
           form.querySelectorAll('input[type="range"]').forEach(range => {
             const num = form.querySelector(`input[name="${range.name}_num"]`);
             if (num) num.value = range.value;
@@ -43,23 +39,22 @@ window.convertButtons.forEach(btn => {
         div.style.display = 'none';
       }
     });
-    // --- ОНОВЛЕНО: оновити заголовок операції ---
+
     const titleOp = document.getElementById('title-operation');
     titleOp.textContent = `${currentColorSpace} convert to ${space}`;
-    // ---
+
     canvasFinal.style.display = 'block';
     fitAndDrawCanvases();
-    // updateCurrentColorMatrixFromCanvas();
-    syncOverlayVisibility(); // Синхронізувати overlay
-    // --- Додатково: дозволити selection, активувати Save/Undo ---
+
+    syncOverlayVisibility();
     setSelectionEnabled(true);
     setSaveUndoEnabled(true);
   });
 });
 
-let currentImageData = null;   // ImageData поточного стану
-let currentColorMatrix = null; // 2D масив кольорів у поточній системі
-let currentColorSpace = 'RGB'; // Поточний простір
+let currentImageData = null;   
+let currentColorMatrix = null; 
+let currentColorSpace = 'RGB';
 let undoStack = [];
 let redoStack = [];
 
@@ -70,7 +65,7 @@ function imageDataToMatrix(imgData) {
     const row = [];
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      row.push([d[i], d[i+1], d[i+2]]); // RGB
+      row.push([d[i], d[i+1], d[i+2]]); 
     }
     matrix.push(row);
   }
@@ -83,7 +78,6 @@ function matrixToImageData(matrix) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
       let rgb;
-      // --- Patch: завжди приводити до цілих чисел у діапазоні 0-255 ---
       if (currentColorSpace === 'RGB') {
         rgb = matrix[y][x];
         rgb = [
@@ -111,7 +105,6 @@ function cloneMatrix(matrix) {
   return matrix.map(row => row.map(px => [...px]));
 }
 
-// --- Обробка форм для коефіцієнтів впливу та конвертації зображення ---
 const colorSpaces = ['RGB', 'CMYK', 'HSB', 'XYZ', 'Lab'];
 colorSpaces.forEach(space => {
   const form = document.getElementById('form-convert-' + space);
@@ -128,8 +121,6 @@ colorSpaces.forEach(space => {
 
       num.value = range.value;
       num.setAttribute('data-prev', range.value);
-
-      // --- Додаємо: при input у number оновлювати range ---
       num.addEventListener('input', () => {
         range.value = num.value;
         num.setAttribute('data-prev', num.value);
@@ -139,7 +130,6 @@ colorSpaces.forEach(space => {
         if (!e.data) return;
 
         if (e.data && !/[\d.,]/.test(e.data)) {
-          // console.log('Заборонено символ:', e.data);
           e.preventDefault();
           return;
         }
@@ -231,7 +221,6 @@ colorSpaces.forEach(space => {
     }
 
     let w = previewMatrix[0].length, h = previewMatrix.length;
-    // --- Визначаємо координати selection у матриці ---
     let selCoords = selection ? getMatrixSelectionCoords(selection, canvasInitial, w, h) : null;
     let x0 = 0, y0 = 0, x1 = w, y1 = h;
     if (selCoords) {
@@ -262,7 +251,6 @@ colorSpaces.forEach(space => {
     }
 
     window.previewMatrix = previewMatrix;
-    // --- Масштабуємо для відображення на canvasFinal ---
     const imgData = matrixToImageData(previewMatrix);
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = imgData.width;
@@ -284,10 +272,8 @@ colorSpaces.forEach(space => {
 
 const panelColor = document.getElementById('wrapper-control-pixel-color');
 
-// --- Save button ---
 document.getElementById('button-convert-save').addEventListener('click', function() {
   if (!canvasFinal || canvasFinal.style.display !== 'block') return;
-  // --- Оновлюємо всю матрицю ---
   let newMatrix = window.previewMatrix ? cloneMatrix(window.previewMatrix) : cloneMatrix(currentColorMatrix);
   undoStack.push(cloneMatrix(newMatrix));
   redoStack = [];
@@ -295,7 +281,6 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   window.currentColorMatrix = currentColorMatrix;
   window.matrixToImageData = matrixToImageData;
   window.previewMatrix = null;
-  // Відображаємо на canvasInitial (масштабуємо для поточного розміру)
   const imgDataNew = matrixToImageData(currentColorMatrix);
   const tmpCanvas = document.createElement('canvas');
   tmpCanvas.width = imgDataNew.width;
@@ -306,28 +291,24 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   const ctxI = canvasInitial.getContext('2d');
   ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
   ctxI.drawImage(tmpCanvas, 0, 0, canvasInitial.width, canvasInitial.height);
-  // Приховуємо canvasFinal
   canvasFinal.style.display = 'none';
-    // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
-  // Приховуємо wrapper-canvas-item (другий)
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
-  syncOverlayVisibility(); // Оновити видимість overlay
-  // Показуємо info-блок
+  syncOverlayVisibility();
+
   document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
     if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
     else div.style.display = 'none';
   });
-  // --- Після збереження: скинути selection, деактивувати Save/Undo, скинути активну кнопку, оновити заголовок ---
+
   setSelectionEnabled(false);
   window.clearSelection();
   setSaveUndoEnabled(false);
   document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
   currentColorSpace = 'RGB';
-  // --- ОНОВЛЕНО: оновити заголовок на поточну систему ---
+
   updateTitleOperation('loaded', currentColorSpace);
-  // --- Додаємо переобчислення розміру wrapper-canvas-item ---
+
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
 
   let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
@@ -340,47 +321,37 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   panelColor.style.display = '';
 });
 
-// --- Overlay/selection state control ---
 function setConvertButtonsEnabled(enabled) {
   convertButtons.forEach(btn => btn.disabled = !enabled);
 }
 function setSaveUndoEnabled(enabled) {
   const btns = document.querySelectorAll('.button-convert');
-  // Save = другий, Undo = перший (Reset)
-  if (btns[0]) btns[0].disabled = !enabled; // Reset
-  if (btns[1]) btns[1].disabled = !enabled; // Save
+  if (btns[0]) btns[0].disabled = !enabled; 
+  if (btns[1]) btns[1].disabled = !enabled; 
 }
 
-// --- Patch: при завантаженні фото ---
 const origHandleFile = handleFile;
 handleFile = function(file) {
   origHandleFile(file);
-  setSelectionEnabled(false); // Заборонити selection до вибору системи
-  setSaveUndoEnabled(false); // Save/Undo неактивні до вибору системи
+  setSelectionEnabled(false); 
+  setSaveUndoEnabled(false); 
   window.clearSelection();
   
-  // Розблокувати кнопки вибору системи
   convertButtons.forEach(btn => btn.disabled = false);
   updateTitleOperation('loaded', currentColorSpace);
 };
 
-// --- Patch: Undo/Save очищають selection, вихід з режиму переведення ---
 const btns = document.querySelectorAll('.button-convert');
-if (btns[1]) btns[1].addEventListener('click', function() { // Save
+if (btns[1]) btns[1].addEventListener('click', function() {
   setSelectionEnabled(false);
   window.clearSelection();
   setSaveUndoEnabled(false);
-  // Приховати canvas-final
   canvasFinal.style.display = 'none';
-    // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
-  // Приховати wrapper-canvas-item (другий)
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
-  syncOverlayVisibility(); // Оновити видимість overlay
-  // --- ОНОВЛЕНО: оновити заголовок на поточну систему ---
+  syncOverlayVisibility(); 
+
   updateTitleOperation('loaded', currentColorSpace);
-  // --- Додаємо переобчислення розміру wrapper-canvas-item ---
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
   
   canvasInitialOverlay.style.cursor = 'default';
@@ -388,21 +359,16 @@ if (btns[1]) btns[1].addEventListener('click', function() { // Save
 
 });
 
-// --- Undo (Ctrl+Z) також очищає selection і блокує selection ---
 document.addEventListener('keydown', function(e) {
-  // console.log('keydown', e);
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-    // console.log('Ctrl+Z pressed');
-    // --- Відновити попередній стан з undoStack ---
 
             const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
-    // console.log('wrapperFinal', wrapperFinal.style.display);
+
     if (wrapperFinal.style.display !== 'flex') {
       if (undoStack.length > 1) {
         redoStack.push(cloneMatrix(currentColorMatrix));
         undoStack.pop();
         currentColorMatrix = cloneMatrix(undoStack[undoStack.length - 1]);
-        // ОНОВЛЕНО: оновити window.currentColorMatrix після Undo
         window.currentColorMatrix = currentColorMatrix;
         const imgDataNew = matrixToImageData(currentColorMatrix);
         canvasInitial.width = imgDataNew.width;
@@ -417,29 +383,21 @@ document.addEventListener('keydown', function(e) {
       }
     }
     if (wrapperFinal) wrapperFinal.style.display = 'none';
-      // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
     
     setSelectionEnabled(false);
     window.clearSelection();
     setSaveUndoEnabled(false);
-    // --- Приховати другий canvas ---
     if (typeof canvasFinal !== 'undefined') canvasFinal.style.display = 'none';
-      // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
-    // --- Приховати меню опцій для обраної системи ---
     document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
       if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
       else div.style.display = 'none';
     });
-    // --- Скинути активну кнопку системи ---
+  
     document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-    // --- Скинути поточну систему ---
     currentColorSpace = 'RGB';
-    // --- Відновити текст на operation ---
     const titleOp = document.getElementById('title-operation');
     titleOp.textContent = 'Open file to convert';
-    // --- Скинути всі значення input range та number ---
+
     document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
       form.reset();
       form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -448,7 +406,7 @@ document.addEventListener('keydown', function(e) {
       });
     });
     updateAllRangeTracks();
-    // --- Деактивувати Save/Undo ---
+  
     setSaveUndoEnabled(false);
     if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
     canvasInitialOverlay.style.cursor = 'default';
@@ -456,9 +414,8 @@ document.addEventListener('keydown', function(e) {
 
 
   }
-  // --- Redo (Ctrl+Shift+Z) ---
+
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-    // Якщо є redoStack
     if (redoStack.length > 0) {
       undoStack.push(cloneMatrix(currentColorMatrix));
       currentColorMatrix = cloneMatrix(redoStack.pop());
@@ -469,12 +426,10 @@ document.addEventListener('keydown', function(e) {
       const ctxI = canvasInitial.getContext('2d');
       ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
       ctxI.putImageData(imgDataNew, 0, 0);
-      // --- Якщо wrapperFinal.style.display === 'flex', приховати переведення ---
+
       const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
       if (wrapperFinal && wrapperFinal.style.display === 'flex') {
         wrapperFinal.style.display = 'none';
-          // wrapperInfluence.style.display = 'none';
-        // wrapperInfluenceInfo.style.display = 'none';
         window.previewMatrix = null;
         if (canvasFinal) {
           const ctxF = canvasFinal.getContext('2d');
@@ -484,19 +439,16 @@ document.addEventListener('keydown', function(e) {
       setSelectionEnabled(false);
       window.clearSelection();
       setSaveUndoEnabled(false);
-      // --- Приховати меню опцій для обраної системи ---
       document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
         if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
         else div.style.display = 'none';
       });
-      // --- Скинути активну кнопку системи ---
+
       document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-      // --- Скинути поточну систему ---
+
       currentColorSpace = 'RGB';
-      // --- Відновити текст на operation ---
       const titleOp = document.getElementById('title-operation');
       titleOp.textContent = 'Open file to convert';
-      // --- Скинути всі значення input range та number ---
       document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
         form.reset();
         form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -522,51 +474,25 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// --- Undo (кнопка) ---
 document.getElementById('button-convert-undo').addEventListener('click', function() {
-  // --- Відновити попередній стан з undoStack ---
-  // if (undoStack.length > 1) {
-  //     redoStack.push(cloneMatrix(currentColorMatrix));
-  //     undoStack.pop();
-  //     currentColorMatrix = cloneMatrix(undoStack[undoStack.length - 1]);
-  //     // ОНОВЛЕНО: оновити window.currentColorMatrix після Undo
-  //     window.currentColorMatrix = currentColorMatrix;
-  //   const imgDataNew = matrixToImageData(currentColorMatrix);
-  //   // Сховати другий wrapper ДО зміни canvas (щоб не було reflow після малювання)
-  //   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
-  //   if (wrappers[1]) wrappers[1].style.display = 'none';
-  //   canvasInitial.width = imgDataNew.width;
-  //   canvasInitial.height = imgDataNew.height;
-  //   const ctxI = canvasInitial.getContext('2d');
-  //   ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
-  //   ctxI.putImageData(imgDataNew, 0, 0);
-  // }
-  // --- Додатково: очищаємо previewMatrix і canvasFinal ---
   window.previewMatrix = null;
   if (canvasFinal) {
     const ctxF = canvasFinal.getContext('2d');
     ctxF && ctxF.clearRect(0, 0, canvasFinal.width, canvasFinal.height);
-    // Приховати wrapper-canvas-item-final
     const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
     if (wrapperFinal) wrapperFinal.style.display = 'none';
-      // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
   }
   setSelectionEnabled(false);
   window.clearSelection();
   setSaveUndoEnabled(false);
-  // --- Приховати меню опцій для обраної системи ---
   document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
     if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
     else div.style.display = 'none';
   });
-  // --- Скинути активну кнопку системи ---
+
   document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-  // --- Скинути поточну систему ---
   currentColorSpace = 'RGB';
-  // --- ОНОВЛЕНО: оновити заголовок на поточну систему ---
   updateTitleOperation('loaded', currentColorSpace);
-  // --- Скинути всі значення input range та number ---
   document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
     form.reset();
     form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -577,15 +503,11 @@ document.getElementById('button-convert-undo').addEventListener('click', functio
   updateAllRangeTracks();
 
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
-
-  
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
-
-
 });
 
-// --- Кнопки Undo/Save приховані до вибору системи ---
+
 const convertControl = document.querySelector('.wrapper-convert-control');
 const btnUndo = document.getElementById('button-convert-undo');
 const btnSave = document.getElementById('button-convert-save');
@@ -594,42 +516,31 @@ btnSave.style.display = 'none';
 
 convertButtons.forEach(btn => {
   btn.addEventListener('click', function() {
-    // ---
     btnUndo.style.display = 'inline-block';
     btnSave.style.display = 'inline-block';
     panelColor.style.display = 'none';
-    // ---
   });
 });
 
-// --- Приховувати Undo/Save після Undo/Save ---
 function hideUndoSave() {
   btnUndo.style.display = 'none';
   btnSave.style.display = 'none';
 }
 
-// Додаємо виклик у Undo та Save
 document.getElementById('button-convert-save').addEventListener('click', function() {
-  // ...existing code...
   hideUndoSave();
-  // ...existing code...
 });
 document.getElementById('button-convert-undo').addEventListener('click', function() {
-  // ...existing code...
   hideUndoSave();
-  // ...existing code...
 });
 
-// --- Динамічне оновлення кольору треку range (Webkit, Firefox, IE/Edge) ---
 function updateAllRangeTracks() {
   document.querySelectorAll('.wrapper-convert-item-body input[type="range"]').forEach(function(range) {
     var min = parseFloat(range.min);
     var max = parseFloat(range.max);
     var val = parseFloat(range.value);
     var percent = ((val - min) / (max - min)) * 100;
-    // Для Webkit (Chrome/Safari/Edge)
     range.style.setProperty('--percent', percent + '%');
-    // Для Firefox
     if (range.style.background !== undefined) {
       range.style.background =
         'linear-gradient(to right, var(--success-accent) 0%, var(--success-accent) ' + percent + '%, var(--gray-panel) ' + percent + '%, var(--gray-panel) 100%)';
@@ -637,7 +548,6 @@ function updateAllRangeTracks() {
   });
 }
 
-// Викликати при input і при reset
 updateAllRangeTracks();
 document.querySelectorAll('.wrapper-convert-item-body input[type="range"]').forEach(function(range) {
   range.addEventListener('input', updateAllRangeTracks);
@@ -647,11 +557,10 @@ document.querySelectorAll('.wrapper-convert-item-body form').forEach(function(fo
     setTimeout(function() {
       updateAllRangeTracks();
       form.dispatchEvent(new Event('submit', {cancelable:true}));
-    }, 0); // після reset значення оновляться
+    }, 0); 
   });
 });
 
-// --- Toggle log show/hide: приховувати/відновлювати resize-log-vertical ---
 document.getElementById('toggle-log-body-down').addEventListener('click', function() {
   const resizeLog = document.getElementById('resize-log-vertical');
   if (resizeLog) resizeLog.style.display = 'none';
@@ -661,11 +570,9 @@ document.getElementById('toggle-log-body-up').addEventListener('click', function
   if (resizeLog) resizeLog.style.display = '';
 });
 
-// --- При старті ---
 updateTitleOperation('before-load');
 
 function updateCurrentColorMatrixFromCanvas() {
-  // Оновлює currentColorMatrix з canvasInitial (розмір вже актуальний)
   if (!canvasInitial) return;
   const ctx = canvasInitial.getContext('2d');
   const imgData = ctx.getImageData(0, 0, canvasInitial.width, canvasInitial.height);
@@ -673,7 +580,6 @@ function updateCurrentColorMatrixFromCanvas() {
   window.currentColorMatrix = currentColorMatrix;
 }
 
-// --- Сабміт активної форми конвертації (глобально) ---
 window.submitActiveConvertForm = function() {
   const activeFormDiv = Array.from(document.querySelectorAll('.wrapper-convert-item-body'))
     .find(div => getComputedStyle(div).display === 'flex');
@@ -683,37 +589,21 @@ window.submitActiveConvertForm = function() {
   }
 };
 
-// --- Перетворення selection з canvas у координати матриці ---
 function getMatrixSelectionCoords(selection, canvas, matrixWidth, matrixHeight) {
   if (!selection) return null;
-  // canvas.width/height — фізичний розмір canvas (відображення)
-  // matrixWidth/Height — розмір матриці (оригінального зображення)
   const scaleX = matrixWidth / canvas.width;
   const scaleY = matrixHeight / canvas.height;
   let x0 = Math.round(selection.x * scaleX);
   let y0 = Math.round(selection.y * scaleY);
   let x1 = Math.round((selection.x + selection.w) * scaleX);
   let y1 = Math.round((selection.y + selection.h) * scaleY);
-  // Обмеження в межах матриці
+
   x0 = Math.max(0, Math.min(matrixWidth, x0));
   y0 = Math.max(0, Math.min(matrixHeight, y0));
   x1 = Math.max(0, Math.min(matrixWidth, x1));
   y1 = Math.max(0, Math.min(matrixHeight, y1));
   return {x0, y0, x1, y1};
 }
-
-// // --- Clear selection ---
-// function window.clearSelection() {
-//   console.log('window.clearSelection');
-//   const hadSelection = !!selection;
-//   selection = null;
-//   syncDrawSelection && syncDrawSelection();
-//   if (hadSelection && typeof window.submitActiveConvertForm === 'function') {
-//     // Після зняття виділення застосувати конвертацію для всього зображення
-//     window.submitActiveConvertForm();
-//   }
-// }
-
 
 function analyzeColorMatrices(matrixA, matrixB, threshold = 1) {
   const h = matrixA.length;
@@ -785,13 +675,10 @@ function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = '
   }
   if (!targetDiv) return;
 
-  // Форматування чисел
   const fmt = (v, d=2) => (typeof v === 'number' ? v.toFixed(d) : v);
 
-  // Формування HTML без inline-стилів
   let html = `<div class="color-analysis-summary">`;
 
-  // Додаємо заголовок з системами
   html += `<div class="color-analysis-title">${fromSystem} <span class="color-analysis-arrow">&#8594;</span> ${toSystem}</div>`;
 
   html += `<b>Accuracy:</b> ${fmt(analysis.accuracy, 2)}%<br>`;
@@ -815,12 +702,10 @@ function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = '
 
   html += `</div>`;
 
-  // Створити новий div і вставити HTML
   const analysisDiv = document.createElement('div');
   analysisDiv.className = 'color-analysis-summary';
   analysisDiv.innerHTML = html.replace(/^<div[^>]*>|<\/div>$/g, '');
 
-  // Додати як наступного сина
   while (isOnly && targetDiv.firstChild) targetDiv.removeChild(targetDiv.firstChild);
   targetDiv.appendChild(analysisDiv);
 }

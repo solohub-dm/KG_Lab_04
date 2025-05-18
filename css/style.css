@@ -12,7 +12,7 @@
 }
 
 body {
-  background-color: var(--gray-dark);
+  background-color: var(--gray-accent);
   display: flex;
   flex-direction: row;
   width: 100vw;
@@ -32,8 +32,8 @@ body {
 .wrapper-canvas {
   display: flex;
   flex-direction: row;
-  justify-content: center; /* Центрування по горизонталі */
-  align-items: center;     /* Центрування по вертикалі */
+  justify-content: center;
+  align-items: center;    
   width: 100%;
   flex: 1 1 0%;
   height: auto;
@@ -78,9 +78,7 @@ body {
   align-items: center;
   width: 100%;
   height: 100px;
-  /* height: 42px; */
   gap: 16px;
-  
 }
 
 .button-convert {
@@ -196,7 +194,6 @@ body {
   align-items: center;
   border-radius: 8px;
   width: 100%;
-  /* height: 64px; */
   background: var(--gray-panel-light);
   box-shadow: 0 2px 8px var(--shadow-lite);
   border: 1px solid var(--gray-border);
@@ -217,7 +214,6 @@ body {
 
 .pixel-color-label {
   display: inline-block;
-  /* background-color: antiquewhite; */
   min-width: 44px;
   width: 44px;
 }
@@ -226,8 +222,6 @@ body {
   text-align: start;
   font-size: 16px;
   letter-spacing: normal;
-  /* text-shadow: var(--shawdo-accent); */
-  /* background-color: var(--shadow-lite); */
 }
 
 .wrapper-control-pixel-color-item:first-of-type {
@@ -300,7 +294,7 @@ body {
 .canvas.overlay-canvas {
   background-color: transparent !important;
   z-index: 3; 
-  pointer-events: auto; /* Changed from none to auto to allow event handling */
+  pointer-events: auto; 
 }
 
 .wrapper-operation-title {
@@ -319,7 +313,6 @@ body {
 
 .title-name {
   flex: 1;
-  /* width: 50%; */
   font-size: 20px;
   font-weight: bold;
   color: var(--white-normal);
@@ -337,10 +330,6 @@ body {
   align-items: center;
   min-width: 15%;
   width: 50%;
-  /* max-height: 320px; */
-  /* height: 320px; */
-  /* flex: 1; */
-  
   background: var(--gray-panel-light);
   border: 1px solid var(--gray-border);
 }
@@ -351,12 +340,8 @@ body {
   justify-content: center;
   align-items: stretch;
   width: 100%;
-
-  /* min-height: 100px;
-  max-height: 600px; */
   height: 220px;
   background: var(--gray-panel);
-  /* transition: height 0.2s; */
 }
 
 #log-item-1 { width: 40%; min-width: 200px;}
@@ -394,9 +379,6 @@ body {
   padding: 12px;
 }
 
-
-
-/* Спільний клас для всіх resize-елементів */
 .resizer-bar {
   background: var(--gray-panel);
 
@@ -436,11 +418,8 @@ body {
   width: 100%;
   height: 4px;
   min-height: 4px;
-  /* bottom: 320px; */
   cursor: ns-resize;
   position: relative;
-  /* background: var(--gray-panel); */
-  /* background-color: aqua; */
 }
 
 
@@ -477,7 +456,6 @@ body {
   min-height: 0;
 }
 
-/* Стилі для форм конвертації колірних систем */
 .wrapper-convert-item-body form {
   display: flex;
   flex-direction: column;
@@ -507,7 +485,6 @@ input[type="number"] {
   background: var(--gray-panel-light);
   color: var(--white-normal);
   font-size: 13px;
-  /* margin-left: 4px; */
   outline: none;
 }
 .wrapper-convert-item-body label + br {
@@ -545,13 +522,11 @@ input[type="number"]:focus {
   background: var(--gray-panel);
 }
 
-/* For Firefox */
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
 
-/* Style for reset button in forms */
 .wrapper-convert-item-body button[type="reset"] {
   justify-self: center;
   margin: 0 auto;
@@ -600,14 +575,11 @@ input[type="number"] {
 .wrapper-convert-item-body input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 4px;
-  /* background: linear-gradient(to right, var(--success-accent) 0%, var(--success-accent) var(--percent, 50%), var(--gray-panel) var(--percent, 50%), var(--gray-panel) 100%); */
 }
-/* Fallback for browsers without custom property support */
 .wrapper-convert-item-body input[type="range"]::-webkit-slider-runnable-track {
   background: var(--gray-panel);
 }
 
-/* Firefox */
 .wrapper-convert-item-body input[type="range"]::-moz-range-thumb {
   width: 12px;
   height: 12px;
@@ -623,15 +595,12 @@ input[type="number"] {
 }
 .wrapper-convert-item-body input[type="range"]:active::-moz-range-thumb {
   background: var(--success-accent);
-  /* border: 2px solid var(--success-accent); */
 }
 .wrapper-convert-item-body input[type="range"]::-moz-range-track {
   height: 6px;
   border-radius: 3px;
-  /* background: linear-gradient(to right, var(--success-accent) 0%, var(--success-accent) 50%, var(--gray-panel) 50%, var(--gray-panel) 100%); */
 }
 
-/* IE/Edge */
 .wrapper-convert-item-body input[type="range"]::-ms-thumb {
   width: 12px;
   height: 12px;
@@ -647,7 +616,6 @@ input[type="number"] {
 }
 .wrapper-convert-item-body input[type="range"]:active::-ms-thumb {
   background: var(--success-accent);
-  /* border: 2px solid var(--success-accent); */
 }
 .wrapper-convert-item-body input[type="range"]::-ms-fill-lower {
   background: var(--success-accent);
@@ -691,24 +659,17 @@ input[type="number"] {
   justify-content: center;
   min-height: auto;
   width: 100%;
-  /* background-color: bisque; */
   padding-top: 12px;
 }
 
 #hueCanvas {
-  /* height: 80%; */
-
   width: 80%;
   max-width: 300px;
   display: block;
-  /* background: #fff; */
   border-radius: 50%;
   background-color: var(--gray-panel-light);
   box-shadow: 0 4px 32px var(--shadow-lite);
   margin-bottom: 4px;
-  /* border: 2px solid var(--gray-panel-light); */
-  /* background-color: azure; */
-
 }
 
 input[type="checkbox"] {
@@ -726,7 +687,6 @@ input[type="checkbox"] {
 
 input[type="checkbox"]:checked {
   background-color: var(--gray-panel);
-  /* border: 2px solid var(--success-accent); */
 }
 
 input[type="checkbox"]:checked::after {
@@ -745,11 +705,8 @@ input[type="checkbox"]:checked::after {
   width: 100%;
   display: flex;
   flex-direction: row;
-  /* height: 32px; */
-  /* gap: 32px; */
   justify-content: space-between;
   margin-top: 8px;
-  /* background-color: aqua; */
 }
 
 
@@ -791,7 +748,7 @@ input[type="checkbox"]:checked::after {
   line-height: 1.5;
   font-size: 14px;
   color: var(--white-predark);
-  margin-bottom: 8px;
+  margin-bottom: 22px;
 }
 .color-analysis-summary b {
   color: var(--warning-accent);
@@ -807,7 +764,6 @@ input[type="checkbox"]:checked::after {
   height: 14px;
   border-radius: 4px;
   border: 1px solid var(--gray-border);
-  /* margin-right: 6px; */
   margin-bottom: 2px;
 }
 
@@ -827,10 +783,9 @@ input[type="checkbox"]:checked::after {
 
 .color-analysis-title {
   font-size: 16px;
-  line-height: 14px;
+  line-height: 12px;
   font-weight: bold;
   color: var(--yellow-accent, var(--white-normal));
-  /* margin-bottom: 6px; */
   letter-spacing: 0.5px;
   text-align: left;
   display: flex;
