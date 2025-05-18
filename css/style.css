@@ -653,6 +653,7 @@ input[type="number"] {
 
 
 .hue-range-selector {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -797,4 +798,10 @@ input[type="checkbox"]:checked::after {
   color: var(--white-predark, var(--white-normal));
   font-size: 18px;
   margin: 0 4px;
+}
+
+#hueDirectionLabel {
+  position: absolute;
+  left: 0;
+  top: 0;
 }

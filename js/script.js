@@ -3,7 +3,7 @@ const wrapperInfluenceLog = document.getElementById('wrapper-log-influence-body'
 
 function updateTitleOperation(mode, from, to) {
   const titleOp = document.getElementById('title-operation');
-  if (mode === 'before-load') {
+  if (mode === 'before-load' || from === undefined) {
     titleOp.textContent = 'Open file to convert';
   } else if (mode === 'loaded') {
     titleOp.textContent = from || 'RGB';
@@ -33,30 +33,57 @@ window.convertButtons.forEach(btn => {
         }
       } else if (div.id === 'wrapper-convert-item-body-info') {
         div.style.display = 'none';
-      } else if (div.id === 'wrapper-convert-item-body-influence') {
-
       } else {
         div.style.display = 'none';
       }
     });
 
-    const titleOp = document.getElementById('title-operation');
-    titleOp.textContent = `${currentColorSpace} convert to ${space}`;
+    updateTitleOperation('convert', currentColorSpace, space);
 
     canvasFinal.style.display = 'block';
     fitAndDrawCanvases();
 
     syncOverlayVisibility();
     setSelectionEnabled(true);
-    setSaveUndoEnabled(true);
+    // setSaveUndoEnabled(true);
   });
 });
 
-let currentImageData = null;   
-let currentColorMatrix = null; 
-let currentColorSpace = 'RGB';
 let undoStack = [];
 let redoStack = [];
+let originalRgbMatrixObj = { matrix: null, colorSpace: 'RGB' };
+let currentColorMatrixObj = { matrix: null, colorSpace: 'RGB' };
+let previewMatrixObj = null;
+
+function getCurrentMatrix() {
+  return currentColorMatrixObj.matrix;
+}
+function getCurrentColorSpace() {
+  return currentColorMatrixObj.colorSpace;
+}
+function setCurrentMatrixObj(obj) {
+  currentColorMatrixObj = { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace };
+  window.currentColorMatrix = currentColorMatrixObj.matrix;
+  window.currentColorSpace = currentColorMatrixObj.colorSpace;
+}
+function getOriginalMatrix() {
+  return originalRgbMatrixObj.matrix;
+}
+function getOriginalColorSpace() {
+  return originalRgbMatrixObj.colorSpace;
+}
+function setOriginalMatrixObj(obj) {
+  originalRgbMatrixObj = { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace };
+}
+function getPreviewMatrix() {
+  return previewMatrixObj ? previewMatrixObj.matrix : null;
+}
+function getPreviewColorSpace() {
+  return previewMatrixObj ? previewMatrixObj.colorSpace : null;
+}
+function setPreviewMatrixObj(obj) {
+  previewMatrixObj = obj ? { matrix: cloneMatrix(obj.matrix), colorSpace: obj.colorSpace } : null;
+}
 
 function imageDataToMatrix(imgData) {
   const w = imgData.width, h = imgData.height, d = imgData.data;
@@ -80,18 +107,8 @@ function matrixToImageData(matrix) {
       let rgb;
       if (currentColorSpace === 'RGB') {
         rgb = matrix[y][x];
-        rgb = [
-          Math.max(0, Math.min(255, Math.round(rgb[0]))),
-          Math.max(0, Math.min(255, Math.round(rgb[1]))),
-          Math.max(0, Math.min(255, Math.round(rgb[2])))
-        ];
       } else {
         rgb = colorRouterMul(currentColorSpace, 'RGB', matrix[y][x], [1,1,1]);
-        rgb = [
-          Math.max(0, Math.min(255, Math.round(rgb[0]))),
-          Math.max(0, Math.min(255, Math.round(rgb[1]))),
-          Math.max(0, Math.min(255, Math.round(rgb[2])))
-        ];
       }
       imgData.data[i] = rgb[0];
       imgData.data[i+1] = rgb[1];
@@ -102,6 +119,7 @@ function matrixToImageData(matrix) {
   return imgData;
 }
 function cloneMatrix(matrix) {
+  if (!matrix) return null;
   return matrix.map(row => row.map(px => [...px]));
 }
 
@@ -121,10 +139,10 @@ colorSpaces.forEach(space => {
 
       num.value = range.value;
       num.setAttribute('data-prev', range.value);
-      num.addEventListener('input', () => {
-        range.value = num.value;
-        num.setAttribute('data-prev', num.value);
-      });
+      // num.addEventListener('input', () => {
+      //   range.value = num.value;
+        
+      // });
 
       num.addEventListener('beforeinput', (e) => {
         if (!e.data) return;
@@ -136,6 +154,7 @@ colorSpaces.forEach(space => {
       });
 
       num.addEventListener('blur', () => {
+        console.log('blur');
         let val = num.value.replace(/,/g, '.');
         val = val.replace(/[^\d.]/g, '');
 
@@ -150,6 +169,7 @@ colorSpaces.forEach(space => {
 
         if (val === '' || val === '.') {
           num.value = num.getAttribute('data-prev') || '';
+          updateAllRangeTracks();
           return;
         }
 
@@ -157,11 +177,13 @@ colorSpaces.forEach(space => {
           let floatVal = parseFloat(val);
           if (isNaN(floatVal) || floatVal < parseFloat(range.min) || floatVal > parseFloat(range.max)) {
             num.value = num.getAttribute('data-prev');
+            updateAllRangeTracks();
           } else {
             floatVal = Math.max(0, Math.min(2, floatVal));
             num.value = floatVal;
             range.value = floatVal;
             num.setAttribute('data-prev', floatVal);
+            updateAllRangeTracks();
             form.dispatchEvent(new Event('submit', { cancelable: true }));
           }
           return;
@@ -171,17 +193,20 @@ colorSpaces.forEach(space => {
           let floatVal = parseFloat(val);
           if (isNaN(floatVal) || floatVal < parseFloat(range.min) || floatVal > parseFloat(range.max)) {
             num.value = num.getAttribute('data-prev');
+            updateAllRangeTracks();
           } else {
             floatVal = Math.max(0, Math.min(2, floatVal));
             num.value = floatVal;
             range.value = floatVal;
             num.setAttribute('data-prev', floatVal);
+            updateAllRangeTracks();
             form.dispatchEvent(new Event('submit', { cancelable: true }));
           }
           return;
         }
 
         num.value = num.getAttribute('data-prev') || '';
+        updateAllRangeTracks();
       });
 
       num.addEventListener('keydown', (e) => {
@@ -202,8 +227,8 @@ colorSpaces.forEach(space => {
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
-    if (!currentColorMatrix) return;
-    let previewMatrix = cloneMatrix(currentColorMatrix);
+    if (!getCurrentMatrix()) return;
+    let previewMatrix = cloneMatrix(getCurrentMatrix());
     let mulKeys = [];
     if (space === 'RGB') mulKeys = ['r_mul','g_mul','b_mul'];
     else if (space === 'CMYK') mulKeys = ['c_mul','m_mul','y_mul','k_mul'];
@@ -229,7 +254,7 @@ colorSpaces.forEach(space => {
     }
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
-        let px = currentColorMatrix[y][x];
+        let px = getCurrentMatrix()[y][x];
         if (!Array.isArray(px) || px.length !== 3 || px.some(v => typeof v !== 'number' || isNaN(v))) {
           px = [0,0,0];
         } else {
@@ -238,20 +263,20 @@ colorSpaces.forEach(space => {
         let result;
         if (!selCoords || (x >= x0 && x < x1 && y >= y0 && y < y1)) {
           if (space === 'HSB') {
-            result = colorRouterMul(currentColorSpace, space, px, muls, opts);
+            result = colorRouterMul(getCurrentColorSpace(), space, px, muls, opts);
           } else {
-            result = colorRouterMul(currentColorSpace, space, px, muls);
+            result = colorRouterMul(getCurrentColorSpace(), space, px, muls);
           }
         } else {
-          result = colorRouterMul(currentColorSpace, space, px, [1,1,1,1]);
+          result = colorRouterMul(getCurrentColorSpace(), space, px, [1,1,1,1]);
         }
         if (space !== 'RGB') result = colorRouterMul(space, 'RGB', result, [1,1,1]);
         previewMatrix[y][x] = result;
       }
     }
 
-    window.previewMatrix = previewMatrix;
-    const imgData = matrixToImageData(previewMatrix);
+    setPreviewMatrixObj({ matrix: previewMatrix, colorSpace: 'RGB' });
+    const imgData = matrixToImageData(getPreviewMatrix());
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = imgData.width;
     tmpCanvas.height = imgData.height;
@@ -274,14 +299,14 @@ const panelColor = document.getElementById('wrapper-control-pixel-color');
 
 document.getElementById('button-convert-save').addEventListener('click', function() {
   if (!canvasFinal || canvasFinal.style.display !== 'block') return;
-  let newMatrix = window.previewMatrix ? cloneMatrix(window.previewMatrix) : cloneMatrix(currentColorMatrix);
-  undoStack.push(cloneMatrix(newMatrix));
+  let newMatrix = getPreviewMatrix() ? cloneMatrix(getPreviewMatrix()) : cloneMatrix(getCurrentMatrix());
+  let newColorSpace = getPreviewColorSpace() || getCurrentColorSpace();
+  undoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
   redoStack = [];
-  currentColorMatrix = newMatrix;
-  window.currentColorMatrix = currentColorMatrix;
+  setCurrentMatrixObj({ matrix: newMatrix, colorSpace: newColorSpace });
   window.matrixToImageData = matrixToImageData;
-  window.previewMatrix = null;
-  const imgDataNew = matrixToImageData(currentColorMatrix);
+  setPreviewMatrixObj(null);
+  const imgDataNew = matrixToImageData(getCurrentMatrix());
   const tmpCanvas = document.createElement('canvas');
   tmpCanvas.width = imgDataNew.width;
   tmpCanvas.height = imgDataNew.height;
@@ -295,57 +320,36 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
   syncOverlayVisibility();
-
   document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
     if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
     else div.style.display = 'none';
   });
-
   setSelectionEnabled(false);
   window.clearSelection();
-  setSaveUndoEnabled(false);
+  // setSaveUndoEnabled(false);
   document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-  currentColorSpace = 'RGB';
-
-  updateTitleOperation('loaded', currentColorSpace);
-
+  setCurrentMatrixObj({ matrix: getCurrentMatrix(), colorSpace: 'RGB' });
+  updateTitleOperation('loaded', getCurrentColorSpace());
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
-
-  let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
-  renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
-
-  res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
-  renderColorAnalysis(res, wrapperInfluenceLog, false, 'RGB', currentColorSpace);
-
+  let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
+  renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
+  res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
+  renderColorAnalysis(res, wrapperInfluenceLog, false, getOriginalColorSpace(), getCurrentColorSpace());
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
 });
 
-function setConvertButtonsEnabled(enabled) {
-  convertButtons.forEach(btn => btn.disabled = !enabled);
-}
-function setSaveUndoEnabled(enabled) {
-  const btns = document.querySelectorAll('.button-convert');
-  if (btns[0]) btns[0].disabled = !enabled; 
-  if (btns[1]) btns[1].disabled = !enabled; 
-}
-
-const origHandleFile = handleFile;
-handleFile = function(file) {
-  origHandleFile(file);
-  setSelectionEnabled(false); 
-  setSaveUndoEnabled(false); 
-  window.clearSelection();
-  
-  convertButtons.forEach(btn => btn.disabled = false);
-  updateTitleOperation('loaded', currentColorSpace);
-};
+// function // setSaveUndoEnabled(enabled) {
+//   const btns = document.querySelectorAll('.button-convert');
+//   if (btns[0]) btns[0].disabled = !enabled; 
+//   if (btns[1]) btns[1].disabled = !enabled; 
+// }
 
 const btns = document.querySelectorAll('.button-convert');
 if (btns[1]) btns[1].addEventListener('click', function() {
   setSelectionEnabled(false);
   window.clearSelection();
-  setSaveUndoEnabled(false);
+  // setSaveUndoEnabled(false);
   canvasFinal.style.display = 'none';
   const wrappers = document.querySelectorAll('.wrapper-canvas-item');
   if (wrappers[1]) wrappers[1].style.display = 'none';
@@ -361,43 +365,35 @@ if (btns[1]) btns[1].addEventListener('click', function() {
 
 document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-
-            const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
-
+    const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
     if (wrapperFinal.style.display !== 'flex') {
       if (undoStack.length > 1) {
-        redoStack.push(cloneMatrix(currentColorMatrix));
+        redoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
         undoStack.pop();
-        currentColorMatrix = cloneMatrix(undoStack[undoStack.length - 1]);
-        window.currentColorMatrix = currentColorMatrix;
-        const imgDataNew = matrixToImageData(currentColorMatrix);
+        const last = undoStack[undoStack.length - 1];
+        setCurrentMatrixObj(last);
+        const imgDataNew = matrixToImageData(getCurrentMatrix());
         canvasInitial.width = imgDataNew.width;
         canvasInitial.height = imgDataNew.height;
         const ctxI = canvasInitial.getContext('2d');
         ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
         ctxI.putImageData(imgDataNew, 0, 0);
-
         if(wrapperInfluenceLog.lastChild) wrapperInfluenceLog.removeChild(wrapperInfluenceLog.lastChild);
-        let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
-        renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
+        let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
+        renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
       }
     }
     if (wrapperFinal) wrapperFinal.style.display = 'none';
-    
     setSelectionEnabled(false);
     window.clearSelection();
-    setSaveUndoEnabled(false);
+    // setSaveUndoEnabled(false);
     if (typeof canvasFinal !== 'undefined') canvasFinal.style.display = 'none';
     document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
       if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
       else div.style.display = 'none';
     });
-  
     document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-    currentColorSpace = 'RGB';
-    const titleOp = document.getElementById('title-operation');
-    titleOp.textContent = 'Open file to convert';
-
+    updateTitleOperation('loaded', currentColorSpace);
     document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
       form.reset();
       form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -406,27 +402,22 @@ document.addEventListener('keydown', function(e) {
       });
     });
     updateAllRangeTracks();
-  
-    setSaveUndoEnabled(false);
+    // setSaveUndoEnabled(false);
     if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
     canvasInitialOverlay.style.cursor = 'default';
-  panelColor.style.display = '';
-
-
+    panelColor.style.display = '';
   }
-
   if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
     if (redoStack.length > 0) {
-      undoStack.push(cloneMatrix(currentColorMatrix));
-      currentColorMatrix = cloneMatrix(redoStack.pop());
-      window.currentColorMatrix = currentColorMatrix;
-      const imgDataNew = matrixToImageData(currentColorMatrix);
+      undoStack.push({ matrix: cloneMatrix(getCurrentMatrix()), colorSpace: getCurrentColorSpace() });
+      const next = redoStack.pop();
+      setCurrentMatrixObj(next);
+      const imgDataNew = matrixToImageData(getCurrentMatrix());
       canvasInitial.width = imgDataNew.width;
       canvasInitial.height = imgDataNew.height;
       const ctxI = canvasInitial.getContext('2d');
       ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
       ctxI.putImageData(imgDataNew, 0, 0);
-
       const wrapperFinal = document.getElementById('wrapper-canvas-item-final');
       if (wrapperFinal && wrapperFinal.style.display === 'flex') {
         wrapperFinal.style.display = 'none';
@@ -438,17 +429,13 @@ document.addEventListener('keydown', function(e) {
       }
       setSelectionEnabled(false);
       window.clearSelection();
-      setSaveUndoEnabled(false);
+      // setSaveUndoEnabled(false);
       document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
         if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
         else div.style.display = 'none';
       });
-
       document.querySelectorAll('.color-space-btn').forEach(btn => btn.classList.remove('active'));
-
-      currentColorSpace = 'RGB';
-      const titleOp = document.getElementById('title-operation');
-      titleOp.textContent = 'Open file to convert';
+      updateTitleOperation('loaded', currentColorSpace);
       document.querySelectorAll('.wrapper-convert-item-body form').forEach(form => {
         form.reset();
         form.querySelectorAll('input[type="range"]').forEach(range => {
@@ -457,19 +444,15 @@ document.addEventListener('keydown', function(e) {
         });
       });
       updateAllRangeTracks();
-      setSaveUndoEnabled(false);
+      // setSaveUndoEnabled(false);
       hideUndoSave();
-
       if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
       canvasInitialOverlay.style.cursor = 'default';
       panelColor.style.display = '';
-
-
-      let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
-      renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
-
-      res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
-      renderColorAnalysis(res, wrapperInfluenceLog, false, 'RGB', currentColorSpace);
+      let res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
+      renderColorAnalysis(res, wrapperInfluenceSum, true, getOriginalColorSpace(), getCurrentColorSpace());
+      res = analyzeColorMatrices(getOriginalMatrix(), getCurrentMatrix())
+      renderColorAnalysis(res, wrapperInfluenceLog, false, getOriginalColorSpace(), getCurrentColorSpace());
     }
   }
 });
@@ -484,7 +467,7 @@ document.getElementById('button-convert-undo').addEventListener('click', functio
   }
   setSelectionEnabled(false);
   window.clearSelection();
-  setSaveUndoEnabled(false);
+  // setSaveUndoEnabled(false);
   document.querySelectorAll('.wrapper-convert-item-body').forEach(div => {
     if (div.id === 'wrapper-convert-item-body-info') div.style.display = 'flex';
     else div.style.display = 'none';
@@ -571,14 +554,6 @@ document.getElementById('toggle-log-body-up').addEventListener('click', function
 });
 
 updateTitleOperation('before-load');
-
-function updateCurrentColorMatrixFromCanvas() {
-  if (!canvasInitial) return;
-  const ctx = canvasInitial.getContext('2d');
-  const imgData = ctx.getImageData(0, 0, canvasInitial.width, canvasInitial.height);
-  currentColorMatrix = imageDataToMatrix(imgData);
-  window.currentColorMatrix = currentColorMatrix;
-}
 
 window.submitActiveConvertForm = function() {
   const activeFormDiv = Array.from(document.querySelectorAll('.wrapper-convert-item-body'))

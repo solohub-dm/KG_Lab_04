@@ -6,6 +6,7 @@ const wrapperCanvas = document.getElementById('wrapper-canvas');
 const canvasInitial = document.getElementById('canvas-initial');
 const canvasInitialOverlay = document.getElementById('canvas-initial-overlay');
 const wrapperInitial = canvasInitial.parentElement;
+console.log('wrapperInitial', wrapperInitial);
 
 const canvasFinal = document.getElementById('canvas-final');
 const canvasFinalOverlay = document.getElementById('canvas-final-overlay');
@@ -23,6 +24,46 @@ function setInitialState() {
   infoText.textContent = 'Open file to convert';
 }
 setInitialState();
+
+let loadedImage = null;
+let loadedImageNaturalWidth = 0;
+let loadedImageNaturalHeight = 0;
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const img = new Image();
+    img.onload = function() {
+      loadedImage = img;
+      loadedImageNaturalWidth = img.width;
+      loadedImageNaturalHeight = img.height;
+
+      showInitialCanvas();
+      infoText.textContent = 'Choose system to convert';
+      convertButtons.forEach(btn => btn.disabled = false);
+
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = img.width;
+      tmpCanvas.height = img.height;
+
+      const tmpCtx = tmpCanvas.getContext('2d');
+      tmpCtx.drawImage(img, 0, 0, img.width, img.height);
+
+      const imgData = tmpCtx.getImageData(0, 0, img.width, img.height);
+      const rgbMatrix = imageDataToMatrix(imgData);
+
+      setCurrentMatrixObj({ matrix: rgbMatrix, colorSpace: 'RGB' });
+      setOriginalMatrixObj({ matrix: rgbMatrix, colorSpace: 'RGB' });
+      undoStack = [{ matrix: cloneMatrix(rgbMatrix), colorSpace: 'RGB' }];
+      redoStack = [];
+
+      updateTitleOperation('loaded', getCurrentColorSpace());
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  panelColor.style.display = '';
+}
 
 placeholder.addEventListener('click', () => fileInput.click());
 
@@ -42,10 +83,6 @@ placeholder.addEventListener('drop', e => {
   }
 });
 
-let loadedImage = null;
-let loadedImageNaturalWidth = 0;
-let loadedImageNaturalHeight = 0;
-
 fileInput.addEventListener('change', e => {
   if (e.target.files && e.target.files[0]) {
     handleFile(e.target.files[0]);
@@ -53,43 +90,6 @@ fileInput.addEventListener('change', e => {
 });
 
 let originalRgbMatrix = null;
-
-function handleFile(file) {
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const img = new Image();
-    img.onload = function() {
-      loadedImage = img;
-      loadedImageNaturalWidth = img.width;
-      loadedImageNaturalHeight = img.height;
-      showInitialCanvas();
-      infoText.textContent = 'Choose system to convert';
-      convertButtons.forEach(btn => btn.disabled = false);
-
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = img.width;
-      tmpCanvas.height = img.height;
-      const tmpCtx = tmpCanvas.getContext('2d');
-      tmpCtx.drawImage(img, 0, 0, img.width, img.height);
-      const imgData = tmpCtx.getImageData(0, 0, img.width, img.height);
-      currentColorMatrix = imageDataToMatrix(imgData);
-
-      originalRgbMatrix = imageDataToMatrix(imgData);
-      currentColorSpace = 'RGB';
-      window.currentColorMatrix = currentColorMatrix;
-      window.matrixToImageData = matrixToImageData;
-      undoStack = [cloneMatrix(currentColorMatrix)];
-      redoStack = [];
-
-      const titleOp = document.getElementById('title-operation');
-      titleOp.textContent = currentColorSpace;
-      updateTitleOperation('loaded', currentColorSpace);
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-  panelColor.style.display = '';
-}
 
 function syncOverlayVisibility() {
 
@@ -102,7 +102,6 @@ function syncOverlayVisibility() {
 }
 
 function syncOverlaySize(mainCanvas, overlayCanvas) {
-
   overlayCanvas.width = mainCanvas.width;
   overlayCanvas.height = mainCanvas.height;
   
@@ -182,7 +181,6 @@ function clearSelection() {
     window.submitActiveConvertForm();
 }
 window.clearSelection = clearSelection;
-
 
 function showInitialCanvas() {
   placeholder.style.display = 'none';
@@ -650,7 +648,7 @@ function setSelectionBase() {
   });
 });
 
-function updateSelectionForCanvasResize(prevWidth, prevHeight, newWidth, newHeight) {
+function updateSelectionForCanvasResize(newWidth, newHeight) {
   if (!selectionBase) return;
   if (!selection) return;
   const scaleX = newWidth / selectionBase.canvasWidth;
@@ -671,7 +669,7 @@ function observeWrapperCanvasItemResize() {
         const newWidth = entry.contentRect.width;
         const newHeight = entry.contentRect.height;
         if ((prevWidth !== 0 && prevHeight !== 0) && (newWidth !== prevWidth || newHeight !== prevHeight)) {
-          updateSelectionForCanvasResize(prevWidth, prevHeight, newWidth, newHeight);
+          updateSelectionForCanvasResize(newWidth, newHeight);
           syncDrawSelection();
         }
         prevWidth = newWidth;
@@ -683,92 +681,83 @@ function observeWrapperCanvasItemResize() {
 }
 
 window.addEventListener('DOMContentLoaded', observeWrapperCanvasItemResize);
+const magnifier = document.getElementById('canvas-magnifier');
 
-(function() {
-  const wrapper = document.getElementById('wrapper-canvas-item-initial');
-  const canvas = document.getElementById('canvas-initial');
-  const magnifier = document.getElementById('canvas-magnifier');
-  if (!wrapper || !canvas || !magnifier) return;
+let magCanvas = document.createElement('canvas');
+magCanvas.width = 80;
+magCanvas.height = 80;
+magnifier.innerHTML = '';
+magnifier.appendChild(magCanvas);
 
-  let magCanvas = document.createElement('canvas');
-  magCanvas.width = 80;
-  magCanvas.height = 80;
-  magnifier.innerHTML = '';
-  magnifier.appendChild(magCanvas);
+const MAG_SIZE = 80; 
+const MAG_SRC = 5;    
+const PIXEL_SIZE = MAG_SIZE / MAG_SRC;
+function showMagnifier(x, y) {
+  const rect = canvasInitial.getBoundingClientRect();
+  const cx = Math.round((x - rect.left) * (canvasInitial.width / rect.width));
+  const cy = Math.round((y - rect.top) * (canvasInitial.height / rect.height));
 
-  const MAG_SIZE = 80; 
-  const MAG_SRC = 5;    
-  const PIXEL_SIZE = MAG_SIZE / MAG_SRC;
-  const MAG_OFFSET_X = -40;
-  const MAG_OFFSET_Y = -130;
-  function showMagnifier(x, y) {
-    const rect = canvas.getBoundingClientRect();
-    const cx = Math.round((x - rect.left) * (canvas.width / rect.width));
-    const cy = Math.round((y - rect.top) * (canvas.height / rect.height));
+  const sx = Math.max(0, Math.min(canvasInitial.width - MAG_SRC, cx - Math.floor(MAG_SRC/2)));
+  const sy = Math.max(0, Math.min(canvasInitial.height - MAG_SRC, cy - Math.floor(MAG_SRC/2)));
+  const ctx = magCanvas.getContext('2d');
+  ctx.clearRect(0,0,magCanvas.width,magCanvas.height);
 
-    const sx = Math.max(0, Math.min(canvas.width - MAG_SRC, cx - Math.floor(MAG_SRC/2)));
-    const sy = Math.max(0, Math.min(canvas.height - MAG_SRC, cy - Math.floor(MAG_SRC/2)));
-    const ctx = magCanvas.getContext('2d');
-    ctx.clearRect(0,0,magCanvas.width,magCanvas.height);
+  const imgData = canvasInitial.getContext('2d').getImageData(sx, sy, MAG_SRC, MAG_SRC);
 
-    const imgData = canvas.getContext('2d').getImageData(sx, sy, MAG_SRC, MAG_SRC);
-
-    for (let py = 0; py < MAG_SRC; py++) {
-      for (let px = 0; px < MAG_SRC; px++) {
-        const i = (py * MAG_SRC + px) * 4;
-        const r = imgData.data[i], g = imgData.data[i+1], b = imgData.data[i+2], a = imgData.data[i+3];
-        ctx.fillStyle = `rgba(${r},${g},${b},${a/255})`;
-        ctx.fillRect(px * PIXEL_SIZE, py * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-      }
+  for (let py = 0; py < MAG_SRC; py++) {
+    for (let px = 0; px < MAG_SRC; px++) {
+      const i = (py * MAG_SRC + px) * 4;
+      const r = imgData.data[i], g = imgData.data[i+1], b = imgData.data[i+2], a = imgData.data[i+3];
+      ctx.fillStyle = `rgba(${r},${g},${b},${a/255})`;
+      ctx.fillRect(px * PIXEL_SIZE, py * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
     }
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#ffff00'; 
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 2;
-    ctx.strokeRect(2 * PIXEL_SIZE, 2 * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= MAG_SRC; i++) {
-
-      ctx.beginPath();
-      ctx.moveTo(i * PIXEL_SIZE, 0);
-      ctx.lineTo(i * PIXEL_SIZE, MAG_SIZE);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(0, i * PIXEL_SIZE);
-      ctx.lineTo(MAG_SIZE, i * PIXEL_SIZE);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    magnifier.style.display = 'block';
-    const wrapperRect = wrapper.getBoundingClientRect();
-    const magHeight = magnifier.offsetHeight || 60;
-
-    magnifier.style.left = (x - wrapperRect.left) + 'px';
-    magnifier.style.top = (y - wrapperRect.top - magHeight) + 'px';
   }
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#ffff00'; 
+  ctx.shadowColor = '#000';
+  ctx.shadowBlur = 2;
+  ctx.strokeRect(2 * PIXEL_SIZE, 2 * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+  ctx.restore();
 
-  wrapper.addEventListener('mousemove', function(e) {
-    if (window._canvasContextMenuOpen) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= MAG_SRC; i++) {
 
-    const final = document.getElementById('wrapper-canvas-item-final');
-    if (!final || final.style.display === 'flex') {
-      magnifier.style.display = 'none';
-      return;
-    }
-    showMagnifier(e.clientX, e.clientY);
-  });
-  wrapper.addEventListener('mouseleave', function() {
+    ctx.beginPath();
+    ctx.moveTo(i * PIXEL_SIZE, 0);
+    ctx.lineTo(i * PIXEL_SIZE, MAG_SIZE);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i * PIXEL_SIZE);
+    ctx.lineTo(MAG_SIZE, i * PIXEL_SIZE);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  magnifier.style.display = 'block';
+  const wrapperRect = wrapperInitial.getBoundingClientRect();
+  const magHeight = magnifier.offsetHeight || 60;
+
+  magnifier.style.left = (x - wrapperRect.left) + 'px';
+  magnifier.style.top = (y - wrapperRect.top - magHeight) + 'px';
+}
+
+wrapperInitial.addEventListener('mousemove', function(e) {
+  if (window._canvasContextMenuOpen) return;
+
+  const final = document.getElementById('wrapper-canvas-item-final');
+  if (!final || final.style.display === 'flex') {
     magnifier.style.display = 'none';
-  });
-})();
-
+    return;
+  }
+  showMagnifier(e.clientX, e.clientY);
+});
+wrapperInitial.addEventListener('mouseleave', function() {
+  magnifier.style.display = 'none';
+});
 
 const panelColors = document.getElementById('wrapper-control-pixel-color');
 panelColors.style.display = 'none';
@@ -852,16 +841,16 @@ canvasInitialOverlay.addEventListener('mouseleave', function() {
   clearPixelColorPanels();
 });
 
-  const wrapper = document.getElementById('wrapper-canvas-item-initial');
-  const menu = document.getElementById('canvas-context-menu');
-  const saveBtn = document.getElementById('context-save-png');
-  const delBtn = document.getElementById('context-delete-img');
-  const magnifier = document.getElementById('canvas-magnifier');
+const menu = document.getElementById('canvas-context-menu');
+const saveBtn = document.getElementById('context-save-png');
+const delBtn = document.getElementById('context-delete-img');
 
-wrapper.addEventListener('contextmenu', function(e) {
+console.log('wrapperInitial', wrapperInitial);
+wrapperInitial.addEventListener('contextmenu', function(e) {
+  console.log('contextmenu');
   if (wrapperFinal && wrapperFinal.style.display === 'flex') return;
   e.preventDefault();
-  const wrapperRect = wrapper.getBoundingClientRect();
+  const wrapperRect = wrapperInitial.getBoundingClientRect();
   menu.style.display = 'block';
   menu.style.left = (e.clientX - wrapperRect.left) + 'px';
   menu.style.top = (e.clientY - wrapperRect.top) + 'px';
@@ -870,28 +859,25 @@ wrapper.addEventListener('contextmenu', function(e) {
   clearPixelColorPanels();
 });
 
-
-  document.addEventListener('mousedown', function(e) {
-    if (!menu.contains(e.target)) {
-      menu.style.display = 'none';
-      window._canvasContextMenuOpen = false;
-    }
-  });
-
-
-  saveBtn.addEventListener('click', function() {
+document.addEventListener('mousedown', function(e) {
+  if (!menu.contains(e.target)) {
     menu.style.display = 'none';
     window._canvasContextMenuOpen = false;
-    if (magnifier) magnifier.style.display = 'none';
-    const link = document.createElement('a');
-    link.download = 'canvas.png';
-    link.href = canvasInitial.toDataURL('image/png');
-    link.click();
-  });
+  }
+});
+
+saveBtn.addEventListener('click', function() {
+  menu.style.display = 'none';
+  window._canvasContextMenuOpen = false;
+  if (magnifier) magnifier.style.display = 'none';
+  const link = document.createElement('a');
+  link.download = 'canvas.png';
+  link.href = canvasInitial.toDataURL('image/png');
+  link.click();
+});
 
 
-  delBtn.addEventListener('click', function() {
-
+delBtn.addEventListener('click', function() {
   menu.style.display = 'none';
   window._canvasContextMenuOpen = false;
   if (magnifier) magnifier.style.display = 'none';
@@ -900,12 +886,13 @@ wrapper.addEventListener('contextmenu', function(e) {
   loadedImageNaturalWidth = 0;
   loadedImageNaturalHeight = 0;
 
-  window.currentColorMatrix = null;
-  window.previewMatrix = null;
+  window.currentColorMatrixObj = { matrix: null, colorSpace: 'RGB' };
+  window.originalRgbMatrixObj = { matrix: null, colorSpace: 'RGB' };
+  window.previewMatrixObj = null;
 
   if (typeof undoStack !== 'undefined') undoStack.length = 0;
   if (typeof redoStack !== 'undefined') redoStack.length = 0;
 
-    if (typeof setInitialState === 'function') setInitialState();
-  });
+  if (typeof setInitialState === 'function') setInitialState();
+});
 

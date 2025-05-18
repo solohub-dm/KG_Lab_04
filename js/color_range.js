@@ -14,6 +14,25 @@ const inputEnd = document.getElementById('hueEnd');
 let hueStart = parseInt(inputStart.value, 10);
 let hueEnd = parseInt(inputEnd.value, 10);
 let dragging = null; 
+let direction = 'cw'; 
+
+function setDirection() {
+  direction = hueDirectionToggle.checked ? 'cw' : 'ccw';
+  hueStart = getInternalHue(inputStart.value);
+  hueEnd = getInternalHue(inputEnd.value);
+  draw();
+}
+
+const hueDirectionToggle = document.getElementById('hueDirectionToggle');
+if (hueDirectionToggle) {
+  hueDirectionToggle.addEventListener('change', () => {
+    setDirection();
+  });
+}
+
+function getInternalHue(val) {
+  return direction === 'ccw' ? (360 - val) % 360 : val;
+}
 
 function drawHueRing() { 
   const image = ctx.createImageData(size, size);
@@ -26,7 +45,8 @@ function drawHueRing() {
       if (r >= innerRadius - 1 && r <= outerRadius + 1) {
         let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
         if (angle < 0) angle += 360;
-        const rgb = hslToRgb(angle/360, 1, 0.5);
+        let hue = direction === 'ccw' ? (360 - angle) % 360 : angle;
+        const rgb = hslToRgb(hue/360, 1, 0.5);
         const idx = (y * size + x) * 4;
         data[idx] = rgb[0];
         data[idx+1] = rgb[1];
@@ -89,7 +109,7 @@ function drawRangeArc(start, end, width) {
 
   ctx.save();
   ctx.beginPath();
-  ctx.arc(center, center, outerRadius + 2, a1, a2, false);
+  ctx.arc(center, center, outerRadius + 2, a1, a2, direction === 'ccw');
   ctx.strokeStyle = '#292a2f'; 
   ctx.lineWidth = 4;
   ctx.shadowColor = '#21232c5c';
@@ -99,7 +119,7 @@ function drawRangeArc(start, end, width) {
 
   ctx.save();
   ctx.beginPath();
-  ctx.arc(center, center, innerRadius - 2, a1, a2, false);
+  ctx.arc(center, center, innerRadius - 2, a1, a2, direction === 'ccw');
   ctx.strokeStyle = '#292a2f';
   ctx.lineWidth = 4;
   ctx.shadowColor = '#21232c5c';
@@ -109,7 +129,7 @@ function drawRangeArc(start, end, width) {
 
   ctx.save();
   ctx.beginPath();
-  ctx.arc(center, center, outerRadius -7, a1, a2, false);
+  ctx.arc(center, center, outerRadius -7, a1, a2, direction === 'ccw');
   ctx.strokeStyle = '#f8fcff'; 
   ctx.lineWidth = 3;
   ctx.stroke();
@@ -117,35 +137,30 @@ function drawRangeArc(start, end, width) {
 
   ctx.save();
   ctx.beginPath();
-  ctx.arc(center, center, innerRadius + 7, a1, a2, false);
+  ctx.arc(center, center, innerRadius + 7, a1, a2, direction === 'ccw');
   ctx.strokeStyle = '#f8fcff';
   ctx.lineWidth = 3;
   ctx.stroke();
   ctx.restore();
-
 }
 
 function drawKnob(angle, highlight, isStart) {
   const rad = (angle - 90) * Math.PI / 180;
   const x = center + Math.cos(rad) * (innerRadius + ringWidth/2);
   const y = center + Math.sin(rad) * (innerRadius + ringWidth/2);
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x, y, knobRadius, 0, 2 * Math.PI);
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = highlight ? '#23242a' : '#292a2f';
-  ctx.shadowColor = highlight ? '#21232c5c' : '#21232c5c';
-  ctx.shadowBlur = highlight ? 6 : 0;
-  ctx.stroke();
-  
-  let startAngle;
-  let endAngle;
+
+  let startAngle = 0;
+  let endAngle = 0;
+    if (direction === 'ccw') {
+    startAngle = Math.PI;
+    endAngle = Math.PI;
+  }
   if (isStart) {
-    startAngle = rad + Math.PI - 0.1;
-    endAngle = rad + 0.1;
+    startAngle += rad + Math.PI - 0.1;
+    endAngle += rad + 0.1;
   } else {
-    startAngle = rad - 0.1; 
-    endAngle = rad + Math.PI + 0.1;
+    startAngle += rad - 0.1; 
+    endAngle += rad + Math.PI + 0.1;
   }
 
   ctx.beginPath();
@@ -154,6 +169,15 @@ function drawKnob(angle, highlight, isStart) {
   ctx.strokeStyle = '#f8fcff';
   ctx.stroke();
   ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, knobRadius, 0, 2 * Math.PI);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = highlight ? '#23242a' : '#292a2f';
+  ctx.shadowColor = highlight ? '#21232c5c' : '#21232c5c';
+  ctx.shadowBlur = highlight ? 6 : 0;
+  ctx.stroke();
 }
 
 function draw() {
@@ -216,10 +240,10 @@ canvas.addEventListener('mousemove', (e) => {
   const angle = Math.round(getAngleFromPoint(mx, my)) % 360;
   if (dragging === 'start') {
     hueStart = angle;
-    inputStart.value = hueStart;
+    inputStart.value = getInternalHue(hueStart);
   } else if (dragging === 'end') {
     hueEnd = angle;
-    inputEnd.value = hueEnd;
+    inputEnd.value = getInternalHue(hueEnd);
   }
   draw();
 });
@@ -231,28 +255,71 @@ window.addEventListener('mouseup', () => {
   draw();
 });
 
-inputStart.addEventListener('input', (e) => {
-  hueStart = Math.max(0, Math.min(359, parseInt(e.target.value, 10) || 0));
-  draw();
-});
-inputEnd.addEventListener('input', (e) => {
-  hueEnd = Math.max(0, Math.min(359, parseInt(e.target.value, 10) || 0));
-  draw();
-});
+// inputStart.addEventListener('input', (e) => {
+//   hueStart = Math.max(0, Math.min(359, parseInt(e.target.value, 10) || 0));
+//   draw();
+// });
+// inputEnd.addEventListener('input', (e) => {
+//   hueEnd = Math.max(0, Math.min(359, parseInt(e.target.value, 10) || 0));
+//   draw();
+// });
 
 ['hueStart', 'hueEnd'].forEach(id => {
   const el = document.getElementById(id);
   if (el) {
-    el.addEventListener('blur', () => {
+    let prev = el.value;
+    function validateHueInput() {
+      let val = el.value.replace(/,/g, '.').replace(/[^\d]/g, '');
+      if (val === '' || isNaN(val)) {
+        el.value = prev;
+        return;
+      }
+      let intVal = parseInt(val, 10);
+      if (isNaN(intVal) || intVal < 0 || intVal > 359) {
+        el.value = prev;
+        return;
+      }
+      el.value = intVal;
+      prev = intVal;
+      if (id === 'hueStart') hueStart = getInternalHue(intVal);
+      if (id === 'hueEnd') hueEnd = getInternalHue(intVal);
+      draw();
       window.submitActiveConvertForm && window.submitActiveConvertForm();
+    }
+    el.addEventListener('beforeinput', (e) => {
+      if (!e.data) return;
+
+      if (!/[\d]/.test(e.data)) {
+        e.preventDefault();
+        return;
+      }
+
+      const selectionStart = el.selectionStart;
+      const selectionEnd = el.selectionEnd;
+      const newValue =
+        el.value.slice(0, selectionStart) + e.data + el.value.slice(selectionEnd);
+      if (newValue.replace(/\D/g, '').length > 3) {
+        e.preventDefault();
+        return;
+      }
     });
+    el.addEventListener('blur', validateHueInput);
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        window.submitActiveConvertForm && window.submitActiveConvertForm();
+        validateHueInput();
+        el.blur();
+      }
+    });
+    el.addEventListener('input', () => {
+      let val = el.value.replace(/,/g, '.').replace(/[^\d]/g, '');
+      let intVal = parseInt(val, 10);
+      if (!isNaN(intVal) && intVal >= 0 && intVal <= 359) {
+        prev = intVal;
       }
     });
   }
 });
+
 const ignoreHueEl = document.getElementById('ignoreHue');
 if (ignoreHueEl) {
   ignoreHueEl.addEventListener('input', () => {
@@ -266,12 +333,14 @@ if (ignoreHueEl) {
 const formHSB = document.getElementById('form-convert-HSB');
 if (formHSB) {
   formHSB.addEventListener('reset', () => {
-
+    hueDirectionToggle.checked = true; 
     inputStart.value = 30;
     inputEnd.value = 120;
     hueStart = 30;
     hueEnd = 120;
     draw();
+    direction = 'cw';
+    setDirection();
 
     window.submitActiveConvertForm && window.submitActiveConvertForm();
   });
