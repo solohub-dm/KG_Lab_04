@@ -1,3 +1,6 @@
+const wrapperInfluenceSum = document.getElementById('wrapper-log-summary-body');
+const wrapperInfluenceLog = document.getElementById('wrapper-log-influence-body');
+
 // --- Title-operation logic ---
 function updateTitleOperation(mode, from, to) {
   const titleOp = document.getElementById('title-operation');
@@ -326,46 +329,16 @@ document.getElementById('button-convert-save').addEventListener('click', functio
   updateTitleOperation('loaded', currentColorSpace);
   // --- Додаємо переобчислення розміру wrapper-canvas-item ---
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
+
+  let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
+  renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
+
+  res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
+  renderColorAnalysis(res, wrapperInfluenceLog, false, 'RGB', currentColorSpace);
+
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
 });
-
-// --- При завантаженні фото ---
-function handleFile(file) {
-  const reader = new FileReader();
-  reader.onload = function(ev) {
-    const img = new Image();
-    img.onload = function() {
-      loadedImage = img;
-      loadedImageNaturalWidth = img.width;
-      loadedImageNaturalHeight = img.height;
-      showInitialCanvas();
-      infoText.textContent = 'Choose system to convert';
-      convertButtons.forEach(btn => btn.disabled = false);
-      // --- Створюємо currentColorMatrix з оригінального зображення ---
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width = img.width;
-      tmpCanvas.height = img.height;
-      const tmpCtx = tmpCanvas.getContext('2d');
-      tmpCtx.drawImage(img, 0, 0, img.width, img.height);
-      const imgData = tmpCtx.getImageData(0, 0, img.width, img.height);
-      currentColorMatrix = imageDataToMatrix(imgData);
-      currentColorSpace = 'RGB';
-      window.currentColorMatrix = currentColorMatrix;
-      window.matrixToImageData = matrixToImageData;
-      undoStack = [cloneMatrix(currentColorMatrix)];
-      redoStack = [];
-      // --- ОНОВЛЕНО: оновити заголовок ---
-      const titleOp = document.getElementById('title-operation');
-      titleOp.textContent = currentColorSpace;
-      updateTitleOperation('loaded', currentColorSpace);
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-  panelColor.style.display = '';
-
-}
 
 // --- Overlay/selection state control ---
 function setConvertButtonsEnabled(enabled) {
@@ -409,6 +382,7 @@ if (btns[1]) btns[1].addEventListener('click', function() { // Save
   updateTitleOperation('loaded', currentColorSpace);
   // --- Додаємо переобчислення розміру wrapper-canvas-item ---
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
+  
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
 
@@ -436,6 +410,10 @@ document.addEventListener('keydown', function(e) {
         const ctxI = canvasInitial.getContext('2d');
         ctxI.clearRect(0, 0, canvasInitial.width, canvasInitial.height);
         ctxI.putImageData(imgDataNew, 0, 0);
+
+        if(wrapperInfluenceLog.lastChild) wrapperInfluenceLog.removeChild(wrapperInfluenceLog.lastChild);
+        let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
+        renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
       }
     }
     if (wrapperFinal) wrapperFinal.style.display = 'none';
@@ -496,7 +474,7 @@ document.addEventListener('keydown', function(e) {
       if (wrapperFinal && wrapperFinal.style.display === 'flex') {
         wrapperFinal.style.display = 'none';
           // wrapperInfluence.style.display = 'none';
-  // wrapperInfluenceInfo.style.display = 'none';
+        // wrapperInfluenceInfo.style.display = 'none';
         window.previewMatrix = null;
         if (canvasFinal) {
           const ctxF = canvasFinal.getContext('2d');
@@ -532,8 +510,14 @@ document.addEventListener('keydown', function(e) {
 
       if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
       canvasInitialOverlay.style.cursor = 'default';
-  panelColor.style.display = '';
+      panelColor.style.display = '';
 
+
+      let res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
+      renderColorAnalysis(res, wrapperInfluenceSum, true, 'RGB', currentColorSpace);
+
+      res = analyzeColorMatrices(originalRgbMatrix, currentColorMatrix)
+      renderColorAnalysis(res, wrapperInfluenceLog, false, 'RGB', currentColorSpace);
     }
   }
 });
@@ -593,6 +577,8 @@ document.getElementById('button-convert-undo').addEventListener('click', functio
   updateAllRangeTracks();
 
   if (typeof fitAndDrawCanvases === 'function') fitAndDrawCanvases();
+
+  
   canvasInitialOverlay.style.cursor = 'default';
   panelColor.style.display = '';
 
@@ -729,7 +715,7 @@ function getMatrixSelectionCoords(selection, canvas, matrixWidth, matrixHeight) 
 // }
 
 
-function analyzeColorMatrices(matrixA, matrixB, threshold = 0) {
+function analyzeColorMatrices(matrixA, matrixB, threshold = 1) {
   const h = matrixA.length;
   const w = h > 0 ? matrixA[0].length : 0;
   const channels = w > 0 ? matrixA[0][0].length : 0;
@@ -790,4 +776,51 @@ function analyzeColorMatrices(matrixA, matrixB, threshold = 0) {
       max: channelDiffMax
     }
   };
+}
+
+
+function renderColorAnalysis(analysis, targetDiv, isOnly = false, fromSystem = 'RGB', toSystem = 'RGB') {
+  if (typeof targetDiv === 'string') {
+    targetDiv = document.getElementById(targetDiv);
+  }
+  if (!targetDiv) return;
+
+  // Форматування чисел
+  const fmt = (v, d=2) => (typeof v === 'number' ? v.toFixed(d) : v);
+
+  // Формування HTML без inline-стилів
+  let html = `<div class="color-analysis-summary">`;
+
+  // Додаємо заголовок з системами
+  html += `<div class="color-analysis-title">${fromSystem} <span class="color-analysis-arrow">&#8594;</span> ${toSystem}</div>`;
+
+  html += `<b>Accuracy:</b> ${fmt(analysis.accuracy, 2)}%<br>`;
+  html += `<b>Average color error:</b> ${fmt(analysis.avgColorError, 3)} (out of 255)<br>`;
+  html += `<b>Max color error:</b> ${fmt(analysis.maxColorError, 3)} (out of 255)<br>`;
+  html += `<b>Min color error:</b> ${fmt(analysis.minColorError, 3)} (out of 255)<br>`;
+
+  if (analysis.colorThatChangedTheMost && analysis.colorThatChangedTheMost.coord && analysis.colorThatChangedTheMost.color) {
+    const c = analysis.colorThatChangedTheMost.color;
+    html += `<b>Color that changed the most:</b> 
+      <span class="color-analysis-swatch" style="background:rgb(${c.join(',')});"></span>
+      rgb(${c.join(', ')}) at (${analysis.colorThatChangedTheMost.coord.x}, ${analysis.colorThatChangedTheMost.coord.y})<br>`;
+  }
+
+  html += `<b>Percent of changed pixels:</b> ${fmt(analysis.percentChanged, 2)}%<br>`;
+
+  if (analysis.channelStats) {
+    html += `<b>Channel-wise avg error:</b> [${analysis.channelStats.avg.map(v=>fmt(v,3)).join(', ')}] (out of 255)<br>`;
+    html += `<b>Channel-wise max error:</b> [${analysis.channelStats.max.map(v=>fmt(v,3)).join(', ')}] (out of 255)<br>`;
+  }
+
+  html += `</div>`;
+
+  // Створити новий div і вставити HTML
+  const analysisDiv = document.createElement('div');
+  analysisDiv.className = 'color-analysis-summary';
+  analysisDiv.innerHTML = html.replace(/^<div[^>]*>|<\/div>$/g, '');
+
+  // Додати як наступного сина
+  while (isOnly && targetDiv.firstChild) targetDiv.removeChild(targetDiv.firstChild);
+  targetDiv.appendChild(analysisDiv);
 }
